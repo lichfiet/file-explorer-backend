@@ -17,4 +17,4 @@
 
 - Implement user identification (form of cookies or something else)
 
-- Create multiple connections for ftp server (may need a separate API for just the connections
+- Create multiple connections for ftp server (may need a separate API for just the connections *might be possible, need to test with multiple machines*
