@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>File Upload</title>
+</head>
+
+<body>
+  <h1>Upload a File</h2>
+  <form action="/uploadFile" method="post" encType="multipart/form-data">
+    <input type="file" name="fileUpload" />
+    <input type="submit" value="Upload" />
+  </form>
+
+  <h1>Fetch Image from SFTP Server</h1>
+  <form id="imageForm" method="GET">
+    <label for="imageName">Image Name:</label>
+    <input type="text" id="imageName" name="imageName">
+    <button type="submit">Fetch Image</button>
+  </form>
+  <img id="sftpImage" src="" alt="SFTP Image" width="600" height="400" style="padding: 15px;">
+
+  <video id="sftpVideo" controls autoplay="true"></video>
+  <!-- Form to Get List of Files -->
+  <h1>Fetch List of Files From SFTP Server</h1>
+  <form id="buttons" method="GET">
+    <button type="getfiles">Fetch File List</button>
+  </form>
+  <p id="files">Waiting on request...</p>
+
+  <script>
+    const form = document.getElementById('imageForm');
+      const imgElement = document.getElementById('sftpImage');
+      const vidElement = document.getElementById('sftpVideo');
+      const files = document.getElementById('files');
+
+      // retrieve file and display
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+
+        const imageName = document.getElementById('imageName').value;
+        const ext = RegExp((/^(mp4)$/i)).test(imageName.split('.').pop());
+
+        if (ext == false) {
+
+          try {
+            const response = await fetch(`/getFile/${imageName}`);
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+
+            const blob = await response.blob();
+            const imageUrl = URL.createObjectURL(blob);
+            imgElement.src = imageUrl;
+          } catch (error) {
+            console.error('There was an error:', error);
+          }
+        } else if (ext == true) {
+          try {
+            const response = await fetch(`/getFile/${imageName}`);
+            if (!response.ok) {
+              throw new Error('Network response was not ok');
+            }
+
+            const blob = await response.blob();
+            const videoUrl = URL.createObjectURL(blob);
+            vidElement.src = videoUrl;
+            vidElement.autoplay = true;
+          } catch (error) {
+            console.error('There was an error:', error);
+          }
+        }
+
+      });
+    
+    // grab file list 
+    buttons.addEventListener('submit', async function (event) {
+      event.preventDefault();
+      try {
+        const response = await fetch(`/listFiles`);
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+
+        const blob = await response.text();
+
+        files.innerHTML = blob;
+      } catch (error) {
+        console.error('There was an error:', error);
+      }
+    });
+  </script>
+
+</html>
