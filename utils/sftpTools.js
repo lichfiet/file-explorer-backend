@@ -47,6 +47,7 @@ module.exports = sftp = {
             return(list);
         },
 
+        // PUT endpoint to upload file
         upload : async function(fileData, test) {
             console.log("Attempting Connection with file server...");
             await sftpConnect()
