@@ -14,6 +14,8 @@ module.exports = extension = {
         } else if (RegExp((/^(mov|avi|mp4)$/i)).test(fileExtension) == true){
             return([2, null, "MOV/AVI/MP4"]) // unsure what other value to return
     
+        } else {
+            return([3, null, "Directory"])
         };
       }
 };

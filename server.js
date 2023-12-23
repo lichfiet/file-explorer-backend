@@ -105,7 +105,7 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
     res.status(200).send({"status": 'File uploaded successfully.', "pathto": `/home/ftpuser/files/${req.file.originalname}`});
   } catch (err) {
     console.error(err);
-    res.status(500).send('Error uploading file.');
+    res.status(500).send({"status": 'Error uploading file.'});
   } finally {
     fs.unlinkSync(req.file.path);
   }
@@ -135,6 +135,47 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
   }
 });
 
+// Endpoint to get a list of files v.2
+app.get('/listFilesFromDir', async (req, res) => {
+
+  res.setHeader("Access-Control-Allow-Origin", "*"); // Set Header for CORS thing
+
+  // Try Getting Files From Server
+  try {
+
+    // Get directory contents from the SFTP server
+    console.log("Listing Contents...");
+    const fileList = await sftp.list();
+    console.log("Grabbed List....");
+
+
+    // Grab File Names
+    const formattedContents = [];
+    for (var key in fileList) {
+
+      const name = fileList[key]["name"]
+      const type = fileList[key]["type"]
+      const fileExtension = extension.getFromFileName(name);
+      const extensionType = (extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
+
+      // Build array with item name and type (dir or file)
+      formattedContents.push({
+        fileName: name, 
+        fileType: type, 
+        fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
+        fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
+      })
+
+    }
+    
+    console.log(formattedContents); // Return console log of contents
+
+    res.send(JSON.stringify(formattedContents));
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error retrieving image from SFTP');
+  }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
