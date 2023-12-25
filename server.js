@@ -37,7 +37,7 @@ app.get('/getFile/:fileName', async (req, res) => {
       const imageBuffer = await sftp.get(fileName);
 
       // Define Content Type of Response
-      res.contentType('file/' + { fileExtension });
+      res.contentType("/blob");
 
       // Send Response
       res.status(200).send(imageBuffer);
