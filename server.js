@@ -2,10 +2,11 @@ const express = require('express');
 const multer = require('multer');
 
 const fs = require('fs');
-const path = require('path'); // Import the path module
 const extension = require('./utils/extensiontools.js');
 const sftp = require('./utils/sftpTools.js');
-const cors = require('cors')
+const cors = require('cors');
+
+const files = require('./utils/s3Functions.js');
 
 const app = express();
 
@@ -52,6 +53,22 @@ app.get('/getFile/:fileName', async (req, res) => {
     res.status(400).send("Invalid File Input Type");
   }
 });
+
+app.get('/listFilesDev', async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  try {
+
+    res.status(200).send(await files.listFiles());
+
+  } catch {
+
+  } finally {
+
+  }
+
+}
+);
 
 // Endpoint to get a list of files
 app.get('/listFiles', async (req, res) => {
@@ -135,47 +152,6 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
   }
 });
 
-// Endpoint to get a list of files v.2
-app.get('/listFilesFromDir', async (req, res) => {
-
-  res.setHeader("Access-Control-Allow-Origin", "*"); // Set Header for CORS thing
-
-  // Try Getting Files From Server
-  try {
-
-    // Get directory contents from the SFTP server
-    console.log("Listing Contents...");
-    const fileList = await sftp.list();
-    console.log("Grabbed List....");
-
-
-    // Grab File Names
-    const formattedContents = [];
-    for (var key in fileList) {
-
-      const name = fileList[key]["name"]
-      const type = fileList[key]["type"]
-      const fileExtension = extension.getFromFileName(name);
-      const extensionType = (extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
-
-      // Build array with item name and type (dir or file)
-      formattedContents.push({
-        fileName: name, 
-        fileType: type, 
-        fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
-        fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
-      })
-
-    }
-    
-    console.log(formattedContents); // Return console log of contents
-
-    res.send(JSON.stringify(formattedContents));
-  } catch (err) {
-    console.error(err);
-    res.status(500).send('Error retrieving image from SFTP');
-  }
-});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
