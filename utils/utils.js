@@ -1,3 +1,5 @@
+const parser = require('xml2json');
+
 module.exports = utils = {
     extension: {
 
@@ -22,17 +24,11 @@ module.exports = utils = {
 
     },
 
-
-
     data: {
-
         xmlToJson: (xml) => {
-            //console.log("xml input -> %s", xml)
-    
-            let data = parser.toJson(xml);
-    
-            return(data)
+            let data = parser.toJson(xml); // turns xml to Json
+            return (data)
         }
-    
+
     }
 };

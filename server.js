@@ -1,60 +1,94 @@
+/** 
+ ** App Packages 
+ */
 const express = require('express');
-
+const app = express();
+const cors = require('cors');
+const dotenv = require('dotenv') // for use of environment variables
 const multer = require('multer');
 const fs = require('fs');
+//* Logging
+const logger = require('./utils/logger.js')
+//
+
+logger.info('STARTING SERVER' + '\n')
+
+
+/**
+ ** App Setup
+ */
+app.use(cors()) 
+logger.info("Local Variables: " + JSON.stringify(dotenv.config({path: './config.env'}))); // Prints Local Variables
+const upload = multer({ dest: 'uploads/' }); // Set up multer for handling file uploads
+
+
+/** Import Utilities */
 const extension = require('./utils/extensiontools.js');
 const sftp = require('./utils/sftpTools.js');
-const cors = require('cors');
-
-const dotenv = require('dotenv') // for use of environment variables
-
-console.log("Local Variables Loaded: ")
-console.log(dotenv.config({path: './config.env'}));
-
 const s3Functions = require('./utils/s3Functions.js'); // file formatting functions, will deprecate use of extension tools with utils and other functions
+const utils = require('./utils/utils.js');
+logger.info("Imported Utilities");
 
-const app = express();
 
-app.use(cors())
 
-// Set up multer for handling file uploads
-const upload = multer({ dest: 'uploads/' });
+/**
+ * 
+ * Routes:
+ * - /(Static Index Page)
+ * - /getFile
+ * - /listFiles
+ * - /uploadFile
+ * - /deleteFile
+ * - /copyFile // TO BE ADDED
+ * 
+ */
 
-// Display the HTML form
+
+
+
+/**
+ * Static Index Page
+ */
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
 
-// Endpoint to fetch a file by its name
+
+/**
+ * 
+ * * /getFile - Endpoint to fetch a file by its name
+ * 
+ * currently just takes /getFile/{fileName} argument in the URL,
+ * 
+ * TODO: but will soon set it up in request params and use jwt to encode the requests and responses
+ * 
+ */
 app.get('/getFile/:fileName', async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  const fileName = (req.params.fileName)
-  const fileExtension = fileName.split('.').pop(); // Get the file extension
+  const fileName = (req.params.fileName) // Init file name from URL
+  const fileExtension = utils.extension.getFromFileName(fileName) // Get the file extension from file name
 
-  // Checking if the file extension is valid
-  if (extension.checkValid(fileExtension)) {
-    console.log("Request for file: " + fileName + " has been made", '\n')
+  //* Checking if the file extension is valid
+  if (utils.extension.checkValid(fileExtension)) {
+    logger.info("Request for file: " + fileName + " has been made", '\n')
 
-    try {
-      console.log("Grabbing file from the file server...", '\n');
 
-      // Retrieve the file from the SFTP server
-      const imageBuffer = await sftp.get(fileName);
+    try {      
+      logger.info("Grabbing file from the file server...", '\n');
+      const imageBuffer = await sftp.get(fileName); // Retrieve the file from the SFTP server
 
-      // Define Content Type of Response
-      res.contentType("/blob");
-
-      // Send Response
-      res.status(200).send(imageBuffer);
+      res.contentType("/blob"); // Define Content Type
+      res.status(200).send(imageBuffer); // Send blob as response
 
     } catch (err) {
-      console.error('\n', err);
+      logger.error('\n', err);
       res.status(500).send("Error Retrieving File (" + err + ")");
-      console.log("Error Retrieving File (" + err + ")")
+      logger.error("Error Retrieving File (" + err + ")")
     }
+    
   } else {
-    console.log("Request for file: " + fileName + " has not been made, please check file extension", '\n')
+    logger.error("Request for file: " + fileName + " has not been made, please check file extension", '\n')
     res.status(400).send("Invalid File Input Type");
   }
 });
@@ -62,20 +96,45 @@ app.get('/getFile/:fileName', async (req, res) => {
 app.get('/listFilesDev', async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
+  var connectMethod = req.headers['method']; // Look for connection method in HTTP header
+  logger.warn(connectMethod);
+
   try {
+    if (connectMethod === undefined) {
+      res.status(400).send('Bad Request, missing Connection Method Header');
+    } else if (!(connectMethod === 'S3' || connectMethod === 'SFTP')) {
+      res.status(400).send('Bad Request, invalid Connection Method');
+    } else if (connectMethod === 'S3') {
 
-    res.status(200).send(await s3Functions.files.listFiles());
-    console.trace();
+      // IF S3
+      res.status(200).send(await s3Functions.files.listFiles());
 
+    } else if (connectMethod === 'SFTP') {
+      // List files from the SFTP server
+      logger.info("Listing Files...");
+      const fileList = await sftp.list();
+      logger.info("Grabbed List....");
+
+      const testarr = [];
+      // Grab File Names
+      for (var key in fileList) {
+        const name = "name"
+        logger.info(fileList[key][name])
+        testarr.push(fileList[key][name])
+        logger.info(key);
+        logger.info(fileList[key]);
+      }
+      logger.info(testarr)
+
+      res.status(200).send(JSON.stringify(testarr));
+
+    }
   } catch (err) {
-
-    res.status(500).send('Error retrieving image from SFTP');
-    console.error('Error retrieving image from SFTP');
-
+    res.status(500).send('Error Retrieving File List: ' + err);
+    logger.error('Error Retrieving File List: ' + err);
   } finally {
 
   }
-
 }
 );
 
@@ -85,24 +144,24 @@ app.get('/listFiles', async (req, res) => {
 
   try {
     // List files from the SFTP server
-    console.log("Listing Files...");
+    logger.info("Listing Files...");
     const fileList = await sftp.list();
-    console.log("Grabbed List....");
+    logger.info("Grabbed List....");
 
     const testarr = [];
     // Grab File Names
     for (var key in fileList) {
       const name = "name"
-      console.log(fileList[key][name])
+      logger.info(fileList[key][name])
       testarr.push(fileList[key][name])
-      console.log(key);
-      console.log(fileList[key]);
+      logger.info(key);
+      logger.info(fileList[key]);
     }
-    console.log(testarr)
+    logger.info(testarr)
 
-    res.send(JSON.stringify(testarr));
+    res.status(200).send(JSON.stringify(testarr));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send('Error retrieving image from SFTP');
   }
 });
@@ -111,26 +170,26 @@ app.get('/listFiles', async (req, res) => {
 app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  console.log("Upload Initiated...");
+  logger.info("Upload Initiated...");
   if (!req.file) {
     return res.status(400).send('No file uploaded.');
   }
 
   try {
     // Read the local file
-    console.log("Reading File...");
+    logger.info("Reading File...");
     const localFilePath = req.file.path;
     const fileData = fs.createReadStream(localFilePath);
 
     const test = req.file.originalname;
 
     // Upload file to SFTP server
-    console.log("Uploading File....")
+    logger.info("Uploading File....")
     await sftp.upload(fileData, test);
 
     res.status(200).send({"status": 'File uploaded successfully.', "pathto": `/home/ftpuser/files/${req.file.originalname}`});
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send({"status": 'Error uploading file.'});
   } finally {
     fs.unlinkSync(req.file.path);
@@ -140,22 +199,22 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
 app.delete('/deleteFile/:fileName', async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  console.log("Deleting...");
+  logger.info("Deleting...");
 
   let fileName = (req.params.fileName)
-  console.log(req.params.fileName)
+  logger.info(req.params.fileName)
 
   try {
     // Read the local file
-    console.log("Grabbing file name from request...");
+    logger.info("Grabbing file name from request...");
 
     // Upload file to SFTP server
-    console.log("Deleting File....")
+    logger.info("Deleting File....")
     await sftp.delete(fileName);
 
     res.status(200).send({"status": 'File deleted successfully.'});
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send('Error uploading file.');
   } finally {
   }
@@ -170,9 +229,9 @@ app.get('/listFilesFromDir', async (req, res) => {
   try {
 
     // Get directory contents from the SFTP server
-    console.log("Listing Contents...");
+    logger.info("Listing Contents...");
     const fileList = await sftp.list();
-    console.log("Grabbed List....");
+    logger.info("Grabbed List....");
 
 
     // Grab File Names
@@ -181,8 +240,8 @@ app.get('/listFilesFromDir', async (req, res) => {
 
       const name = fileList[key]["name"]
       const type = fileList[key]["type"]
-      const fileExtension = extension.getFromFileName(name);
-      const extensionType = (extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
+      const fileExtension = utils.extension.getFromFileName(name);
+      const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
 
       // Build array with item name and type (dir or file)
       formattedContents.push({
@@ -194,11 +253,11 @@ app.get('/listFilesFromDir', async (req, res) => {
 
     }
 
-    console.log(formattedContents); // Return console log of contents
+    logger.info(formattedContents); // Return console log of contents
 
     res.send(JSON.stringify(formattedContents));
   } catch (err) {
-    console.error(err);
+    logger.error(err);
     res.status(500).send('Error retrieving image from SFTP');
   }
 });
@@ -206,5 +265,5 @@ app.get('/listFilesFromDir', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log('\n', `Server is running on port ${PORT}`, '\n');
+  logger.info('\n', `Server is running on port ${PORT}`, '\n');
 });
