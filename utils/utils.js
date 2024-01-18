@@ -3,8 +3,8 @@ const parser = require('xml2json');
 module.exports = utils = {
     extension: {
 
-        getFromFileName: function (fileName) {
-            return (fileName.split('.').pop());
+        getFromFileName: function(fileName) {
+            return(fileName.split('.').pop());
         },
 
         checkValid: function (fileExtension) {

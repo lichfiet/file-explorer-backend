@@ -22,11 +22,11 @@ logger.info("Local Variables: " + JSON.stringify(dotenv.config({path: './config.
 const upload = multer({ dest: 'uploads/' }); // Set up multer for handling file uploads
 
 
-/** Import Utilities */
-const extension = require('./utils/extensiontools.js');
-const sftp = require('./utils/sftpTools.js');
-const s3Functions = require('./utils/s3Functions.js'); // file formatting functions, will deprecate use of extension tools with utils and other functions
+/**
+ * *Import Utilities 
+*/
 const utils = require('./utils/utils.js');
+const files = require('./utils/fileRequests.js'); // For s3 / sftp connections
 logger.info("Imported Utilities");
 
 
@@ -76,7 +76,7 @@ app.get('/getFile/:fileName', async (req, res) => {
 
     try {      
       logger.info("Grabbing file from the file server...", '\n');
-      const imageBuffer = await sftp.get(fileName); // Retrieve the file from the SFTP server
+      const imageBuffer = await files.sftpFunctions.get(fileName); // Retrieve the file from the SFTP server
 
       res.contentType("/blob"); // Define Content Type
       res.status(200).send(imageBuffer); // Send blob as response
@@ -93,13 +93,15 @@ app.get('/getFile/:fileName', async (req, res) => {
   }
 });
 
+
 app.get('/listFilesDev', async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  var connectMethod = req.headers['method']; // Look for connection method in HTTP header
-  logger.warn(connectMethod);
+  const connectMethod = req.headers['method']; // Look for connection method in HTTP header
+  logger.info('Connection Method: ' + connectMethod); // Log it
 
   try {
+    // Check for connection method in header
     if (connectMethod === undefined) {
       res.status(400).send('Bad Request, missing Connection Method Header');
     } else if (!(connectMethod === 'S3' || connectMethod === 'SFTP')) {
@@ -107,31 +109,25 @@ app.get('/listFilesDev', async (req, res) => {
     } else if (connectMethod === 'S3') {
 
       // IF S3
-      res.status(200).send(await s3Functions.files.listFiles());
+      logger.info("Listing S3 Files..."); // List files from the SFTP server
+      res.status(200).send(await files.s3Functions.listFiles());
 
     } else if (connectMethod === 'SFTP') {
-      // List files from the SFTP server
-      logger.info("Listing Files...");
-      const fileList = await sftp.list();
-      logger.info("Grabbed List....");
 
-      const testarr = [];
-      // Grab File Names
-      for (var key in fileList) {
-        const name = "name"
-        logger.info(fileList[key][name])
-        testarr.push(fileList[key][name])
-        logger.info(key);
-        logger.info(fileList[key]);
+      const config = {
+        // to be deprecated once the connection info can be queried from a sql server
+
       }
-      logger.info(testarr)
-
-      res.status(200).send(JSON.stringify(testarr));
+      // IF SFTP
+      logger.info("Listing SFTP Files..."); // List files from the SFTP server
+      res.status(200).send(await files.sftpFunctions.list());
 
     }
   } catch (err) {
+
     res.status(500).send('Error Retrieving File List: ' + err);
     logger.error('Error Retrieving File List: ' + err);
+
   } finally {
 
   }
@@ -145,7 +141,7 @@ app.get('/listFiles', async (req, res) => {
   try {
     // List files from the SFTP server
     logger.info("Listing Files...");
-    const fileList = await sftp.list();
+    const fileList = await files.sftpFunctions.list();
     logger.info("Grabbed List....");
 
     const testarr = [];
@@ -185,7 +181,7 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
 
     // Upload file to SFTP server
     logger.info("Uploading File....")
-    await sftp.upload(fileData, test);
+    await files.sftpFunctions.upload(fileData, test);
 
     res.status(200).send({"status": 'File uploaded successfully.', "pathto": `/home/ftpuser/files/${req.file.originalname}`});
   } catch (err) {
@@ -210,7 +206,7 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
 
     // Upload file to SFTP server
     logger.info("Deleting File....")
-    await sftp.delete(fileName);
+    await files.sftpFunctions.delete(fileName);
 
     res.status(200).send({"status": 'File deleted successfully.'});
   } catch (err) {
@@ -228,34 +224,14 @@ app.get('/listFilesFromDir', async (req, res) => {
   // Try Getting Files From Server
   try {
 
-    // Get directory contents from the SFTP server
+    // Get directory contents from the SFTP servee        
     logger.info("Listing Contents...");
-    const fileList = await sftp.list();
+    const formattedContents = await files.sftpFunctions.list();
     logger.info("Grabbed List....");
-
-
-    // Grab File Names
-    const formattedContents = [];
-    for (var key in fileList) {
-
-      const name = fileList[key]["name"]
-      const type = fileList[key]["type"]
-      const fileExtension = utils.extension.getFromFileName(name);
-      const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
-
-      // Build array with item name and type (dir or file)
-      formattedContents.push({
-        fileName: name, 
-        fileType: type, 
-        fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
-        fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
-      })
-
-    }
 
     logger.info(formattedContents); // Return console log of contents
 
-    res.send(JSON.stringify(formattedContents));
+    res.send(formattedContents);
   } catch (err) {
     logger.error(err);
     res.status(500).send('Error retrieving image from SFTP');
@@ -263,7 +239,7 @@ app.get('/listFilesFromDir', async (req, res) => {
 });
 
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT
 app.listen(PORT, () => {
   logger.info('\n', `Server is running on port ${PORT}`, '\n');
 });
