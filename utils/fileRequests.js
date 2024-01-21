@@ -1,19 +1,19 @@
+/**
+ * App Packages
+ */
 const axios = require('axios');
 const utils = require('./utils.js');
 const logger = require('./logger.js');
-
 const SftpClient = require('ssh2-sftp-client');
-const sftpConfig = {
-    host: 'localhost',
-    port: '22', // Typically 22 for SFTP
-    username: 'ftpuser',
-    password: 'pass'
-}
 
+/**
+ * Var Setup
+ */
 const client = new SftpClient()
-
-const sftpConnect = () => client.connect(sftpConfig)
+const sftpConnect = (config) => client.connect(config)
 const sftpDisconnect = () => client.end()
+
+
 
 module.exports = files = {
     s3Functions: {
@@ -23,7 +23,7 @@ module.exports = files = {
             try {
                 logger.info('Requesting files from S3 Bucket')
 
-                const response = await axios.get(process.env.S3_URL) // get data from s3
+                const response = await axios.get(`${process.env.S3_URL}/listFiles/file-conv-bucket`) // get data from s3
                 let jsonData = utils.data.xmlToJson(response.data); // format xml to json data
 
                 const extractedFiles = JSON.parse(jsonData).ListBucketResult.Contents // define variable with the array of files
@@ -32,7 +32,7 @@ module.exports = files = {
                 for (var key in extractedFiles) {
 
                     const name = extractedFiles[key]["Key"]
-                    const type = (name.search("/") === -1 ? "-" : "D") // need to implement handler to determine if key is a directory path
+                    const type = (name.search("/") === -1 ? "-" : "d") // need to implement handler to determine if key is a directory path
                     const fileExtension = utils.extension.getFromFileName(name);
                     const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
 
@@ -45,7 +45,7 @@ module.exports = files = {
                     })
                 }
 
-                logger.info(JSON.stringify(formattedContents))
+                logger.info(JSON.stringify('Files Returned:' + formattedContents.map((obj) => ' ' + obj.fileName))) // log returned file names
                 return (formattedContents)
 
             } catch (err) {
@@ -58,16 +58,79 @@ module.exports = files = {
 
             }
 
+        },
+        getFile: async (fileName) => {
+
+            try {
+
+                logger.info(`Requesting file ${fileName} from S3 Bucket`)
+                const response = await axios.get(`${process.env.S3_URL}/getFile/file-conv-bucket/${fileName}`, {
+                    responseType: 'arraybuffer', // Ensure that response type is set to arraybuffer
+                });
+
+                logger.info('File Grabbed.');
+
+                if (response.data && response.data.length > 0) {
+                    return Buffer.from(response.data, 'binary'); // Convert array buffer to Buffer
+                } else {
+                    logger.error('Empty response data.');
+                    return null;
+                }
+            } catch (err) {
+                logger.error('Error Occurred Requesting File From Bucket: ' + err);
+                throw err;
+            } finally {
+                logger.info('S3 Request Completed');
+            }
+
+        },
+
+        uploadFile: async function (fileData, fileName) {
+            
+            logger.info("Attempting Connection with file server...");
+
+            try {
+
+                let upload = await axios.put(`${process.env.S3_URL}/uploadFile/file-conv-bucket/${fileName}`, fileData)
+    
+                logger.info("Sending upload status");
+                return (upload.body);
+
+            } catch {
+
+            } finally {
+
+            }
+        },
+
+        deleteFile: async (fileName) => {
+            
+            try {
+                logger.info('Deleting file from S3 Bucket')
+
+                const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-conv-bucket/${fileName}`) // get data from s3
+
+                return(response.body)
+
+            } catch (err) {
+
+                logger.error('Error Occured Deleting File From Bucket: ' + err)
+
+            } finally {
+
+                logger.info('S3 Request Completed')
+
+            }
         }
 
     },
     sftpFunctions: {
 
         // GET Endpoint to retrieve files
-        get: async function (fileName) {
+        get: async function (fileName, config) {
 
             logger.info("Attempting Connection with file server...");
-            await sftpConnect()
+            await sftpConnect(config)
 
             logger.info("Communication Success...", '\n');
 
@@ -77,13 +140,14 @@ module.exports = files = {
             logger.info("Request fulfilled, closing connection.", '\n')
 
             logger.info("Sending the file to client...");
-            return (file);
+            return Buffer.from(file); // Convert array buffer to Buffer
         },
 
         // GET Endpoint to retrieve directory contents
-        list: async function () {
+        list: async function (config) {
             logger.info("Attempting Connection with file server...");
-            await sftpConnect()
+
+            await sftpConnect(config)
 
             logger.info("Communication Success...", '\n');
 
@@ -96,32 +160,32 @@ module.exports = files = {
 
             const formattedContents = [];
             for (var key in list) {
-        
-              const name = list[key]["name"]
-              const type = list[key]["type"]
-              const fileExtension = utils.extension.getFromFileName(name);
-              const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
-        
-              // Build array with item name and type (dir or file)
-              formattedContents.push({
-                fileName: name, 
-                fileType: type, 
-                fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
-                fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
-              })
-        
+
+                const name = list[key]["name"]
+                const type = list[key]["type"]
+                const fileExtension = utils.extension.getFromFileName(name);
+                const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
+
+                // Build array with item name and type (dir or file)
+                formattedContents.push({
+                    fileName: name,
+                    fileType: type,
+                    fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
+                    fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
+                })
+
             }
-        
+
             logger.info(formattedContents); // Return console log of contents
 
-            return(formattedContents);
+            return (formattedContents);
 
         },
 
         // PUT endpoint to upload file
-        upload: async function (fileData, test) {
+        upload: async function (fileData, test, config) {
             logger.info("Attempting Connection with file server...");
-            await sftpConnect()
+            await sftpConnect(config)
 
             logger.info("Communication Success...", '\n');
 
@@ -130,13 +194,13 @@ module.exports = files = {
             await sftpDisconnect()
             logger.info("Request fulfilled, closing connection.", '\n')
 
-            logger.info("Sending the file list to client...");
+            logger.info("Sending upload status");
             return (upload);
         },
 
-        delete: async function (fileName) {
+        delete: async function (fileName, config) {
             logger.info("Attempting Connection with file server...");
-            await sftpConnect()
+            await sftpConnect(config)
 
             logger.info("Communication Success...", '\n');
 
@@ -148,6 +212,61 @@ module.exports = files = {
             logger.info("Sending the file list to client...");
             return (del);
 
+
+        }
+
+    },
+
+    requestValidation: (headers) => {
+        let response = {
+            message: '',
+            status: 200
+        }
+
+        let method = headers.method
+        let sessionid = headers.sessionid
+
+        console.log(headers)
+        console.log(sessionid)
+
+        let validateFunction = (sessionid) => {
+            return (sessionid !== 'true' ? false : true)
+        }
+
+        if (headers.method === undefined) {
+
+            return({
+                message: `Missing Connection Method Header. Header looks like 'method'`,
+                status: 400
+            });
+
+        } else if (!(method === 'S3' || method === 'SFTP')) {
+
+            return({
+                message: `Invalid Connection Method. Valid Methods Look Like: S3, SFTP`,
+                status: 400
+            });
+
+        } else if (sessionid === undefined) {
+
+            return ({
+                message: `Bad Request, Missing Session Token Header. Header looks like 'sessionid'`,
+                status: 401
+            });
+
+        } else if (validateFunction(sessionid) !== true) {
+
+            return ({
+                message: `Unable to Authenticate`,
+                status: 401
+            });
+
+        } else {
+
+            return ({
+                message: 'Valid Request',
+                status: 200
+            });
 
         }
 
