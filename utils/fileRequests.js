@@ -226,9 +226,6 @@ module.exports = files = {
         let method = headers.method
         let sessionid = headers.sessionid
 
-        console.log(headers)
-        console.log(sessionid)
-
         let validateFunction = (sessionid) => {
             return (sessionid !== 'true' ? false : true)
         }

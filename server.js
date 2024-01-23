@@ -85,7 +85,7 @@ app.get('/getFile/:fileName', async (req, res) => {
 
     try {
 
-      console.log(validation)
+      logger.info(validation)
 
       if (validation.status !== 200) {
         throw new Error('Error Validating Request, ')
@@ -147,8 +147,6 @@ app.get('/listFilesDev', async (req, res) => {
 
   try {
 
-    console.log(validation)
-
     if (validation.status !== 200) {
       throw new Error('Error Validating Request, ')
     } else {
@@ -205,8 +203,6 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
 
   const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
 
-  console.log(validation)
-
   try {
 
     if (validation.status !== 200) {
@@ -245,7 +241,7 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
       res.status(200).send({ "status": 'File uploaded successfully.', "pathto": `/home/ftpuser/files/${req.file.originalname}` });
 
     } else {
-      console.log('fuck')
+      console.log('resume friendly word to handle error');
     }
   } catch (err) {
     logger.error(err);
@@ -273,7 +269,7 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
 
   const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
 
-  console.log(validation)
+  logger.info(validation)
 
   try {
 
@@ -308,7 +304,7 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
     
       }
     } else {
-      console.log('fuck')
+      console.log('resume friendly word to handle error')
     }
   } catch (err) {
     logger.error(err);
