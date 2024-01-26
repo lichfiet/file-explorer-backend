@@ -62,6 +62,7 @@ app.get('/', (req, res) => {
  */
 app.get('/getFile/:fileName', async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
 
   const method = req.headers.method; // Look for connection method in HTTP header
   logger.info('Connection Method: ' + JSON.stringify(method)); // Log it
@@ -131,6 +132,7 @@ app.get('/getFile/:fileName', async (req, res) => {
  */
 app.get('/listFilesDev', async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
 
   const method = req.headers['method']; // Look for connection method in HTTP header
   logger.info('Connection Method: ' + method); // Log it
@@ -185,6 +187,8 @@ app.get('/listFilesDev', async (req, res) => {
  */
 app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Headers", "*");
+  
 
   const method = req.headers.method
 
