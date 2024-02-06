@@ -13,6 +13,12 @@ const logger = require('./utils/logger.js')
 
 logger.info('STARTING SERVER' + '\n')
 
+var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
+var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
+
+var credentials = {key: privateKey, cert: certificate};
+
+var https = require('https');
 
 /**
  ** App Setup
@@ -28,6 +34,8 @@ const upload = multer({ dest: 'uploads/' }); // Set up multer for handling file 
 const utils = require('./utils/utils.js');
 const files = require('./utils/fileRequests.js'); // For s3 / sftp connections
 logger.info("Imported Utilities");
+
+
 
 
 
@@ -316,6 +324,11 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
   } finally {
   }
 });
+
+console.log(credentials)
+
+var httpsServer = https.createServer(credentials, app);
+httpsServer.listen(8443);
 
 
 
