@@ -217,11 +217,7 @@ module.exports = files = {
 
     },
 
-    requestValidation: (headers) => {
-        let response = {
-            message: '',
-            status: 200
-        }
+    requestValidation: (headers, fileExtension) => {
 
         let method = headers.method
         let sessionid = headers.sessionid
@@ -257,6 +253,15 @@ module.exports = files = {
                 message: `Unable to Authenticate`,
                 status: 401
             });
+
+        } else if (fileExtension === undefined) {
+            logger.info('meow')
+        } else if (utils.extension.checkValid(fileExtension)[0] === 3) {
+
+            return ({
+                message: `Invalid file extension detected, valid extensions look like: MP4, PNG, JPG, JPEG, GIF, AVI, MOV. Your extension looks like: ${fileExtension}`,
+                status: 400
+            });            
 
         } else {
 
