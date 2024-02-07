@@ -7,18 +7,12 @@ const cors = require('cors');
 const dotenv = require('dotenv') // for use of environment variables
 const multer = require('multer');
 const fs = require('fs');
-//* Logging
-const logger = require('./utils/logger.js')
-//
+const https = require('https');
 
-logger.info('STARTING SERVER' + '\n')
-
-var privateKey = fs.readFileSync('sslcert/server.key', 'utf8');
-var certificate = fs.readFileSync('sslcert/server.crt', 'utf8');
-
-var credentials = {key: privateKey, cert: certificate};
-
-var https = require('https');
+/** 
+ * * Observability
+ */
+const logger = require('./utils/logger.js') // logging
 
 /**
  ** App Setup
@@ -35,9 +29,13 @@ const utils = require('./utils/utils.js');
 const files = require('./utils/fileRequests.js'); // For s3 / sftp connections
 logger.info("Imported Utilities");
 
-
-
-
+/**
+ * * HTTPS Setup
+ */
+const privateKey = fs.readFileSync('sslcert/server.key', 'utf8'); // key
+const certificate = fs.readFileSync('sslcert/server.crt', 'utf8'); // cert
+const credentials = {key: privateKey, cert: certificate};  
+const httpsServer = https.createServer(credentials, app); // server var
 
 /**
  * 
@@ -48,10 +46,11 @@ logger.info("Imported Utilities");
  * - /uploadFile
  * - /deleteFile
  * - /copyFile // TO BE ADDED
+ * - /renameFile // TO BE ADDED
  * 
  */
 
-
+logger.info('STARTING SERVER' + '\n')
 
 /**
  * Static Index Page
@@ -325,14 +324,16 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
   }
 });
 
-console.log(credentials)
-
-var httpsServer = https.createServer(credentials, app);
-httpsServer.listen(8443);
 
 
+app.get('/health', async (req, res) => {
+  res.status(200).send('Server Running')
+})
 
-const PORT = process.env.PORT
-app.listen(PORT, () => {
+
+
+httpsServer.listen(8443, () => {
+
   logger.info('\n', `Server is running on port ${PORT}`, '\n');
+
 });

@@ -19,8 +19,8 @@
     <button type="submit">Fetch Image</button>
   </form>
   <img id="sftpImage" src="" alt="SFTP Image" width="600" height="400" style="padding: 15px;">
-
   <video id="sftpVideo" controls autoplay="true"></video>
+
   <!-- Form to Get List of Files -->
   <h1>Fetch List of Files From SFTP Server</h1>
   <form id="buttons" method="GET">
@@ -44,7 +44,13 @@
         if (ext == false) {
 
           try {
-            const response = await fetch(`/getFile/${imageName}`);
+            const response = await fetch(`/getFile/${imageName}`, {
+              headers: {
+                method: 'S3',
+                sessionid: 'true'
+              }
+            });
+            
             if (!response.ok) {
               throw new Error('Network response was not ok');
             }
@@ -57,7 +63,11 @@
           }
         } else if (ext == true) {
           try {
-            const response = await fetch(`/getFile/${imageName}`);
+            const response = await fetch(`/getFile/${imageName}`, {
+              headers: {
+                method: 'S3',
+                sessionid: 'true'
+              }});
             if (!response.ok) {
               throw new Error('Network response was not ok');
             }
@@ -77,7 +87,11 @@
     buttons.addEventListener('submit', async function (event) {
       event.preventDefault();
       try {
-        const response = await fetch(`/listFiles`);
+        const response = await fetch(`/listFilesDev`, {
+              headers: {
+                method: 'S3',
+                sessionid: 'true'
+              }});
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
