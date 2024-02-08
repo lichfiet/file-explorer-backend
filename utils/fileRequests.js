@@ -222,7 +222,7 @@ module.exports = files = {
                 // check if file requested is in list
                 if (formattedContents.includes(fileName) === true) {
                     await client.delete(fileName)
-                    return("File successfully deleted from S3 Bucket")
+                    return("File successfully deleted from SFTP Folder")
                 } else {
                     throw new Error(`File requested for deletion does not exist, files look like: ${formattedContents}`)
                 }
@@ -231,7 +231,7 @@ module.exports = files = {
                 throw new Error(err.message)
             } finally {
                 await sftpDisconnect()
-                logger.info("Request fulfilled, closing connection.", '\n')
+                logger.info("Request fulfilled, closing connection.")
             }
         }
 
