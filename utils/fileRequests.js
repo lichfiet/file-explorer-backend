@@ -84,7 +84,6 @@ module.exports = files = {
             }
 
         },
-
         uploadFile: async function (fileData, fileName) {
             
             logger.info("Attempting Connection with file server...");
@@ -102,24 +101,34 @@ module.exports = files = {
 
             }
         },
-
         deleteFile: async (fileName) => {
-            
+            logger.info('Deleting file from S3 Bucket')
             try {
-                logger.info('Deleting file from S3 Bucket')
 
-                const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-conv-bucket/${fileName}`) // get data from s3
-
-                return(response.body)
+                // list files and see if request is valid before deleting
+                const fileList = await axios.get(`${process.env.S3_URL}/listFiles/file-conv-bucket`) // get data from s3
+                const extractedFiles = JSON.parse(utils.data.xmlToJson(fileList.data)).ListBucketResult.Contents // define variable with the array of files
+                let formattedContents = [];
+                for (var key in extractedFiles) {formattedContents.push(extractedFiles[key]["Key"])}
+                logger.info("Extracted File List")
+                
+                // if the file is a file in the bucket, then else
+                if (formattedContents.includes(fileName) === true) {
+                    const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-conv-bucket/${fileName}`) // get data from s3
+                    // if response from aws is good
+                    if (response.status !== 200) {
+                        throw new Error(`Error received from S3 API: ${response.body}`)
+                    } else {
+                        return("File successfully deleted from S3 Bucket")
+                    }
+                } else {
+                    throw new Error(`File requested for deletion does not exist, files look like: ${formattedContents}`)
+                }
 
             } catch (err) {
-
-                logger.error('Error Occured Deleting File From Bucket: ' + err)
-
+                throw new Error(err.message)
             } finally {
-
                 logger.info('S3 Request Completed')
-
             }
         }
 
@@ -199,20 +208,31 @@ module.exports = files = {
         },
 
         delete: async function (fileName, config) {
-            logger.info("Attempting Connection with file server...");
-            await sftpConnect(config)
 
-            logger.info("Communication Success...", '\n');
+            try {
+                logger.info("Attempting Connection with file server...");
+                await sftpConnect(config)
+                logger.info("Communication Success...");
+                let list = await client.list('/home/ftpuser/')
 
-            let del = await client.delete(fileName)
+                // grab file list
+                const formattedContents = [];
+                for (var key in list) {formattedContents.push(list[key]["name"])}
 
-            await sftpDisconnect()
-            logger.info("Request fulfilled, closing connection.", '\n')
+                // check if file requested is in list
+                if (formattedContents.includes(fileName) === true) {
+                    await client.delete(fileName)
+                    return("File successfully deleted from S3 Bucket")
+                } else {
+                    throw new Error(`File requested for deletion does not exist, files look like: ${formattedContents}`)
+                }
 
-            logger.info("Sending the file list to client...");
-            return (del);
-
-
+            } catch (err) {
+                throw new Error(err.message)
+            } finally {
+                await sftpDisconnect()
+                logger.info("Request fulfilled, closing connection.", '\n')
+            }
         }
 
     },

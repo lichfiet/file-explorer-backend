@@ -17,11 +17,13 @@ const logger = require('./utils/logger.js') // logging
  ** App Setup
  */
 const app = express();
-app.use(cors())
-logger.info("Local Variables: " + JSON.stringify(dotenv.config({ path: './config.env' }))); // Prints Local Variables
+app.use(cors());
+const config = dotenv.config({ path: './config.env' }); // Prints Local Variables
 const upload = multer({ dest: 'uploads/' }); // Set up multer for handling file uploads
+logger.info("Env Vars: " + JSON.stringify(config))
 
 const PORT = process.env.PORT
+
 
 
 /**
@@ -269,40 +271,40 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
     password: process.env.SFTP_PASSWORD
   }
 
-  const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
+  const validation = files.requestValidation(req.headers, utils.extension.getFromFileName(fileName)) //! will move to the auth section or have a whole different validation handler
 
   try {
 
+    // validate request
     if (validation.status !== 200) {
-      throw new Error('Error Validating Request, ')
+      throw new Error(`Error Validating Request, ${validation.message}`)
     } else {
       logger.info(validation.message);
     };
 
+    logger.info("Deleting File....")
+
+    // if s3
     if (method === 'S3') {
-
-      res.status(200).send(await files.s3Functions.deleteFile(fileName))
-
-    } else if (method === 'SFTP') {
-      logger.info("Deleting...");
-    
       try {
-        // Read the local file
-        logger.info("Grabbing file name from request...");
-    
-        // Upload file to SFTP server
-        logger.info("Deleting File....")
-        await files.sftpFunctions.delete(fileName, config);
-    
-        res.status(200).send({ "status": 'File deleted successfully.' });
+        res.status(200).send( await files.s3Functions.deleteFile(fileName))
       } catch (err) {
-        res.status(500).send('Error uploading file.');
-      } finally {
-        logger.info('File Deletion Request Completed')
+        res.status(400).send(`Error: ${err.message}`)
       }
+    }
+    
+    // if sftp
+    if (method === 'SFTP') {    
+      try {
+        res.status(200).send(await files.sftpFunctions.delete(fileName, config));
+      } catch (err) {
+        res.status(400).send(`Error: ${err.message}`);
+      }
+
     } 
+
   } catch (err) {
-    res.status(400).send('Error uploading file.');
+    res.status(400).send(`Error: ${err}`);
   } finally {
   }
 });
