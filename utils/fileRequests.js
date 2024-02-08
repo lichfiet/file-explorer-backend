@@ -274,8 +274,11 @@ module.exports = files = {
                 status: 401
             });
 
-        } else if (fileExtension === undefined) {
-            logger.info('meow')
+        } else if (fileExtension === `listFiles`) {
+            return ({
+                message: `N/A`,
+                status: 200
+            }); 
         } else if (utils.extension.checkValid(fileExtension)[0] === 3) {
 
             return ({

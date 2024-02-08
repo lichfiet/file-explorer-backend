@@ -78,16 +78,13 @@ app.get('/getFile/:fileName', async (req, res) => {
 
   const validation = files.requestValidation(req.headers, fileExtension) //! will move to the auth section or have a whole different validation handler
 
-  logger.info("Request for file: " + fileName + " has been made", '\n')
+  logger.info("Request for file: " + fileName + " has been made")
 
     try {
 
       if (validation.status !== 200) {
         // Check request headers and auth
         throw new Error(`Error Validating Request, ${validation.message}`)
-      } else if (utils.extension.checkValid(fileExtension)[0] === 3) {
-        // check extension
-        throw new Error(`Error Validating File Request, ${validation.message}`)
       } else if (1 + 1 !== 2 /** will replace with authentication handler */) {
         // authenticate request
         throw new Error(`Error Authenticating Request, ${validation.message}`)
@@ -148,15 +145,17 @@ app.get('/listFilesDev', async (req, res) => {
     password: process.env.SFTP_PASSWORD
   }
 
-  const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
+  const validation = files.requestValidation(req.headers, "listFiles") //! will move to the auth section or have a whole different validation handler
 
   try {
 
     if (validation.status !== 200) {
-      throw new Error('Error Validating Request, ')
-    } else {
-      logger.info('Request Validated');
-    };
+      // Check request headers and auth
+      throw new Error(`Error Validating Request, ${validation.message}`)
+    } else if (1 + 1 !== 2 /** will replace with authentication handler */) {
+      // authenticate request
+      throw new Error(`Error Authenticating Request, ${validation.message}`)
+    }
 
     if (method === 'S3') {
 
@@ -173,9 +172,11 @@ app.get('/listFilesDev', async (req, res) => {
     }
   } catch (err) {
 
-    // Send error to the client and log it
-    res.status(500).send('Error Retrieving File List: ' + err);
     logger.error('Error Retrieving File List: ' + err);
+
+    // Send error to the client and log it
+    res.status(400).send('Error: ' + err.message);
+    
 
   } finally {
 

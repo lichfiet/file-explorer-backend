@@ -29,6 +29,5 @@ module.exports = utils = {
             let data = parser.toJson(xml); // turns xml to Json
             return (data)
         }
-
     }
 };
