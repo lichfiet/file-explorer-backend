@@ -21,6 +21,9 @@ app.use(cors());
 const config = dotenv.config({ path: './config.env' }); // Prints Local Variables
 const upload = multer({ dest: 'uploads/' }); // Set up multer for handling file uploads
 logger.info("Env Vars: " + JSON.stringify(config))
+const db = require('./utils/db.js'); // test
+db.connect(); // connect to sql DB
+db.refreshModels();
 
 const PORT = process.env.PORT
 
@@ -62,7 +65,6 @@ logger.info('Starting server....')
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
-
 
 /**
  * * /getFile - Endpoint to fetch a file by its name
@@ -315,6 +317,23 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
  */
 app.get('/health', async (req, res) => {
   res.status(200).send('Server Running')
+})
+
+app.get('/sqlTest', async (req, res) => {
+  const meow = await db.test()
+  logger.info("test2")
+
+  let files = ['meow', 'bob']
+
+  for (var key in meow) {
+    if (files.includes(meow[key].fileName) === true) {
+      logger.error('exists');
+    } else {
+      files.push(meow[key].fileName);
+    }
+  }
+
+  res.status(200).send(files)
 })
 
 // START SERVER
