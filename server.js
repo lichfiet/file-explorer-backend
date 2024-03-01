@@ -7,6 +7,7 @@ const dotenv = require('dotenv') // for use of environment variables
 const multer = require('multer');
 const fs = require('fs');
 const https = require('https');
+const http = require('http');
 
 /** 
  * * Observability
@@ -44,6 +45,7 @@ const certificate = fs.readFileSync('sslcert/server.crt', 'utf8'); // cert
 const credentials = {key: privateKey, cert: certificate};  
 const httpsServer = https.createServer(credentials, app); // server var
 
+const httpServer = http.createServer(app); // server var
 /**
  * 
  * Routes:
@@ -205,17 +207,18 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
 
   logger.info("Upload Initiated...");
 
-  const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
+  //const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
 
   try {
 
+    /**
     if (validation.status !== 200) {
       throw new Error('Error Validating Request, ')
     } else if (!req.file) {
       throw new Error('Bad Request, missing file data')
     } else {
       logger.info('Request Validated');
-    };
+    }; */
 
     if (method === 'S3') {
       // Read the local file
@@ -337,7 +340,7 @@ app.get('/sqlTest', async (req, res) => {
 })
 
 // START SERVER
-httpsServer.listen(PORT, () => {
+httpServer.listen(PORT, () => {
 
   logger.info(`Server is running on port ${PORT}`);
 
