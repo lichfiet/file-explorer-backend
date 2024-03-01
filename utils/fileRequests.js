@@ -23,27 +23,46 @@ module.exports = files = {
             try {
                 logger.info('Requesting files from S3 Bucket')
 
-                const response = await axios.get(`${process.env.S3_URL}/listFiles/file-conv-bucket`) // get data from s3
+                const response = await axios.get(`${process.env.S3_URL}/listFiles/file-explorer-s3-bucket`) // get data from s3
                 let jsonData = utils.data.xmlToJson(response.data); // format xml to json data
 
                 const extractedFiles = JSON.parse(jsonData).ListBucketResult.Contents // define variable with the array of files
 
+                logger.error(extractedFiles)
                 const formattedContents = [];
-                for (var key in extractedFiles) {
 
-                    const name = extractedFiles[key]["Key"]
-                    const type = (name.search("/") === -1 ? "-" : "d") // need to implement handler to determine if key is a directory path
-                    const fileExtension = utils.extension.getFromFileName(name);
-                    const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
-
-                    // Build array with item name and type (dir or file)
+                if (extractedFiles === undefined) {
                     formattedContents.push({
-                        fileName: name, // s3 contents Key value 
-                        fileType: type, // Directory or File
-                        fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
-                        fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
-                    })
-                }
+                        fileName: "No Files",
+                        fileType: "d", // need to implement handler to determine if key is a directory path
+                        fileExtension: "Dir", // If File, add extension
+                        fileExtensionType: "Dir", // If File, add extension type
+                   })
+                } else if (extractedFiles.constructor !== Array) {
+                    console.log("mewo")
+                   formattedContents.push({
+                          fileName: extractedFiles.Key,
+                          fileType: (extractedFiles.Key.search("/") === -1 ? "-" : "d"), // need to implement handler to determine if key is a directory path
+                          fileExtension: (extractedFiles.Key.search("/") === -1 ? utils.extension.getFromFileName(extractedFiles.Key) : "Dir"), // If File, add extension
+                          fileExtensionType: (extractedFiles.Key.search("/") === -1 ? (utils.extension.checkValid(utils.extension.getFromFileName(extractedFiles.Key)))[0] : "Dir"), // If File, add extension type
+                     })
+                } else if (extractedFiles.constructor === Array) {
+                    for (var key in extractedFiles) {
+    
+                        const name = extractedFiles[key].Key
+                        const type = (name.search("/") === -1 ? "-" : "d") // need to implement handler to determine if key is a directory path
+                        const fileExtension = utils.extension.getFromFileName(name);
+                        const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
+    
+                        // Build array with item name and type (dir or file)
+                        formattedContents.push({
+                            fileName: name, // s3 contents Key value 
+                            fileType: type, // Directory or File
+                            fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
+                            fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
+                        })
+                    }
+                } else { /** if the array is empty */}
 
                 logger.info(JSON.stringify('Files Returned:' + formattedContents.map((obj) => ' ' + obj.fileName))) // log returned file names
                 return (formattedContents)
@@ -64,7 +83,7 @@ module.exports = files = {
             try {
 
                 logger.info(`Requesting file ${fileName} from S3 Bucket`)
-                const response = await axios.get(`${process.env.S3_URL}/getFile/file-conv-bucket/${fileName}`, {
+                const response = await axios.get(`${process.env.S3_URL}/getFile/file-explorer-s3-bucket/${fileName}`, {
                     responseType: 'arraybuffer', // Ensure that response type is set to arraybuffer
                 });
 
@@ -90,7 +109,7 @@ module.exports = files = {
 
             try {
 
-                let upload = await axios.put(`${process.env.S3_URL}/uploadFile/file-conv-bucket/${fileName}`, fileData)
+                let upload = await axios.put(`${process.env.S3_URL}/uploadFile/file-explorer-s3-bucket/${fileName}`, fileData)
     
                 logger.info("Sending upload status");
                 return (upload.body);
@@ -104,17 +123,27 @@ module.exports = files = {
         deleteFile: async (fileName) => {
             logger.info('Deleting file from S3 Bucket')
             try {
-
                 // list files and see if request is valid before deleting
-                const fileList = await axios.get(`${process.env.S3_URL}/listFiles/file-conv-bucket`) // get data from s3
+                const fileList = await axios.get(`${process.env.S3_URL}/listFiles/file-explorer-s3-bucket`) // get data from s3
+
                 const extractedFiles = JSON.parse(utils.data.xmlToJson(fileList.data)).ListBucketResult.Contents // define variable with the array of files
+
                 let formattedContents = [];
-                for (var key in extractedFiles) {formattedContents.push(extractedFiles[key]["Key"])}
+
+                if (extractedFiles.constructor !== Array) {
+                    logger.error("SINFGLE GFE")
+                   formattedContents.push(extractedFiles.Key)
+                } else {
+                    for (var key in extractedFiles) {formattedContents.push(extractedFiles[key]["Key"])} 
+                }
+                
                 logger.info("Extracted File List")
+
+                logger.info(formattedContents)
                 
                 // if the file is a file in the bucket, then else
                 if (formattedContents.includes(fileName) === true) {
-                    const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-conv-bucket/${fileName}`) // get data from s3
+                    const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-explorer-s3-bucket/${fileName}`) // get data from s3
                     // if response from aws is good
                     if (response.status !== 200) {
                         throw new Error(`Error received from S3 API: ${response.body}`)
@@ -126,6 +155,7 @@ module.exports = files = {
                 }
 
             } catch (err) {
+                logger.error(err.message)
                 throw new Error(err.message)
             } finally {
                 logger.info('S3 Request Completed')
