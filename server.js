@@ -108,7 +108,8 @@ app.get('/getFile/:fileName', async (req, res) => {
 
         logger.info("Grabbing S3 File..."); // logging
         const s3Data = await files.s3Functions.getFile(fileName); //Get file from the S3 server
-        res.contentType('image/*'); // set response content type
+        res.attachment(fileName); // set response header
+        // res.contentType('image/*'); // set response content type
         res.status(200).send(s3Data); // send image
 
       } else if (method === 'SFTP') {
