@@ -5,6 +5,7 @@ const axios = require('axios');
 const utils = require('./utils.js');
 const logger = require('./logger.js');
 const SftpClient = require('ssh2-sftp-client');
+const he = require('he');
 
 /**
  * Var Setup
@@ -13,70 +14,53 @@ const client = new SftpClient()
 const sftpConnect = (config) => client.connect(config)
 const sftpDisconnect = () => client.end()
 
+class File {
+    constructor(fileName, fileType, fileExtension, fileExtensionType) {
+        this.fileName = fileName;
+        this.fileType = fileType;
+        this.fileExtension = fileExtension;
+        this.fileExtensionType = fileExtensionType;
+    }
+}
+
+const createFile = (name) => {
+    const type = (name.search("/") === -1 ? "-" : "d");
+    const fileExtension = (type === "-" ? utils.extension.getFromFileName(name) : "Dir");
+    const extensionType = (type === "-" ? (utils.extension.checkValid(fileExtension))[0] : "Dir");
+    return new File(name, type, fileExtension, extensionType);
+};
 
 
 module.exports = files = {
     s3Functions: {
 
         listFiles: async () => {
+            logger.info('Requesting files from S3 Bucket');
 
             try {
-                logger.info('Requesting files from S3 Bucket')
+                // Get data from s3 and convert to JSON
+                const response = await axios.get(`${process.env.S3_URL}/listFiles/file-explorer-s3-bucket`);
+                let jsonData = utils.data.xmlToJson(response.data);
+                const extractedFiles = JSON.parse(jsonData).ListBucketResult.Contents;
+                logger.info('Files Extracted: ' + JSON.stringify(extractedFiles));
 
-                const response = await axios.get(`${process.env.S3_URL}/listFiles/file-explorer-s3-bucket`) // get data from s3
-                let jsonData = utils.data.xmlToJson(response.data); // format xml to json data
-
-                const extractedFiles = JSON.parse(jsonData).ListBucketResult.Contents // define variable with the array of files
-
-                logger.error(extractedFiles)
-                const formattedContents = [];
-
+                // Format files into array of File objects
+                let formattedContents = [];
                 if (extractedFiles === undefined) {
-                    formattedContents.push({
-                        fileName: "No Files",
-                        fileType: "d", // need to implement handler to determine if key is a directory path
-                        fileExtension: "Dir", // If File, add extension
-                        fileExtensionType: "Dir", // If File, add extension type
-                   })
-                } else if (extractedFiles.constructor !== Array) {
-                    console.log("mewo")
-                   formattedContents.push({
-                          fileName: extractedFiles.Key,
-                          fileType: (extractedFiles.Key.search("/") === -1 ? "-" : "d"), // need to implement handler to determine if key is a directory path
-                          fileExtension: (extractedFiles.Key.search("/") === -1 ? utils.extension.getFromFileName(extractedFiles.Key) : "Dir"), // If File, add extension
-                          fileExtensionType: (extractedFiles.Key.search("/") === -1 ? (utils.extension.checkValid(utils.extension.getFromFileName(extractedFiles.Key)))[0] : "Dir"), // If File, add extension type
-                     })
-                } else if (extractedFiles.constructor === Array) {
-                    for (var key in extractedFiles) {
-    
-                        const name = extractedFiles[key].Key
-                        const type = (name.search("/") === -1 ? "-" : "d") // need to implement handler to determine if key is a directory path
-                        const fileExtension = utils.extension.getFromFileName(name);
-                        const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
-    
-                        // Build array with item name and type (dir or file)
-                        formattedContents.push({
-                            fileName: name, // s3 contents Key value 
-                            fileType: type, // Directory or File
-                            fileExtension: (type === "-" ? fileExtension : "Dir"), // If File, add extension
-                            fileExtensionType: (type === "-" ? extensionType : "Dir"), // If File, add extension type
-                        })
-                    }
-                } else { /** if the array is empty */}
+                    logger.info('No Files Found');
+                    formattedContents = [new File("No Files", "d", "Dir", "Dir")];
+                } else {
+                    logger.info('Files found, formatting...');
+                    formattedContents = [].concat(extractedFiles).map(file => createFile(file.Key));
+                    logger.info('Files Returned: ' + formattedContents.length);
+                }
 
-                logger.info(JSON.stringify('Files Returned:' + formattedContents.map((obj) => ' ' + obj.fileName))) // log returned file names
-                return (formattedContents)
-
+                return formattedContents;
             } catch (err) {
-
-                logger.error('Error Occured Requesting File From Bucket: ' + err)
-
+                logger.error('Error Occured Requesting File From Bucket: ' + err);
             } finally {
-
-                logger.info('S3 Request Completed')
-
+                logger.info('S3 Request Completed');
             }
-
         },
         getFile: async (fileName) => {
 
@@ -99,13 +83,12 @@ module.exports = files = {
                 logger.error('Error Occurred Requesting File From Bucket: ' + err);
                 throw err;
             } finally {
-                logger.info('S3 Request Completed');
+                logger.info('S3 List Request Completed');
             }
 
         },
         uploadFile: async function (fileData, fileName) {
-            
-            logger.info("Attempting Connection with file server...");
+            logger.info("Uploading file to S3 Bucket");
 
             try {
 
@@ -114,10 +97,10 @@ module.exports = files = {
                 logger.info("Sending upload status");
                 return (upload.body);
 
-            } catch {
-
+            } catch (err) {
+                logger.error('Error Occurred Uploading File To Bucket: ' + err);
             } finally {
-
+                logger.info('S3 Upload Request Completed');
             }
         },
         deleteFile: async (fileName) => {
@@ -204,7 +187,6 @@ module.exports = files = {
                 const type = list[key]["type"]
                 const fileExtension = utils.extension.getFromFileName(name);
                 const extensionType = (utils.extension.checkValid(fileExtension))[0]; // 0: Img, 1: Gif, 2: Video
-
                 // Build array with item name and type (dir or file)
                 formattedContents.push({
                     fileName: name,
