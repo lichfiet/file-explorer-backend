@@ -1,53 +1,51 @@
-/** 
- ** App Packages 
+/**
+ ** App Packages
  */
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv') // for use of environment variables
-const multer = require('multer');
-const fs = require('fs');
-const https = require('https');
-const http = require('http');
+const express = require("express");
+const cors = require("cors");
+const dotenv = require("dotenv"); // for use of environment variables
+const multer = require("multer");
+const fs = require("fs");
+const https = require("https");
+const http = require("http");
 
-/** 
+const config = dotenv.config({ path: "./config.env" }); // Prints Local Variables
+
+/**
  * * Observability
  */
-const logger = require('./utils/logger.js') // logging
+const logger = require("./utils/logger.js"); // logging
 
 /**
  ** App Setup
  */
 const app = express();
 app.use(cors());
-const config = dotenv.config({ path: './config.env' }); // Prints Local Variables
-const upload = multer({ dest: 'uploads/' }); // Set up multer for handling file uploads
-logger.info("Env Vars: " + JSON.stringify(config))
-const db = require('./utils/db.js'); // test
+
+const upload = multer({ dest: "uploads/" }); // Set up multer for handling file uploads
+logger.debug("Env Vars: " + JSON.stringify(config));
+const db = require("./utils/db.js"); // test
 db.connect(); // connect to sql DB
 db.refreshModels();
 
-const PORT = process.env.PORT
-
-
-
 /**
- * *Import Utilities 
-*/
-const utils = require('./utils/utils.js');
-const files = require('./utils/fileRequests.js'); // For s3 / sftp connections
+ * *Import Utilities
+ */
+const utils = require("./utils/utils.js");
+const { files, file } = require("./utils/fileRequests.js"); // For s3 / sftp connections
 logger.info("Imported Utilities");
 
 /**
  * * HTTPS Setup
  */
-const privateKey = fs.readFileSync('sslcert/server.key', 'utf8'); // key
-const certificate = fs.readFileSync('sslcert/server.crt', 'utf8'); // cert
-const credentials = {key: privateKey, cert: certificate};  
+const privateKey = fs.readFileSync("sslcert/server.key", "utf8"); // key
+const certificate = fs.readFileSync("sslcert/server.crt", "utf8"); // cert
+const credentials = { key: privateKey, cert: certificate };
 const httpsServer = https.createServer(credentials, app); // server var
 
 const httpServer = http.createServer(app); // server var
 /**
- * 
+ *
  * Routes:
  * - /(Static Index Page)
  * - /getFile
@@ -56,204 +54,157 @@ const httpServer = http.createServer(app); // server var
  * - /deleteFile
  * - /copyFile // TO BE ADDED
  * - /renameFile // TO BE ADDED
- * 
+ *
  */
 
-logger.info('Starting server....')
+// ! TEMPORARY UNTIL I CAN KEEP CONFIG FOR METHODS SENT WITH THE REQUESTS
+const fileAccessConfig = {
+  s3: {
+    url: process.env.S3_URL,
+    //apiKey: process.env.S3_API_KEY
+  },
+  ftp: {
+    host: process.env.SFTP_URL,
+    port: process.env.SFTP_PORT, // Typically 22 for SFTP
+    username: process.env.SFTP_USERNAME,
+    password: process.env.SFTP_PASSWORD,
+  },
+};
+
+logger.info("Starting server....");
 
 /**
  * Static Index Page
  */
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+app.get("/", (req, res) => {
+  res.sendFile(__dirname + "/index.html");
 });
 
 /**
  * * /getFile - Endpoint to fetch a file by its name
- * 
+ *
  * currently just takes /getFile/{fileName} argument in the URL,
  */
-app.get('/getFile/:fileName', async (req, res) => {
+app.get("/getFile/:fileName", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  const method = req.headers.method; // Look for connection method in HTTP header
-  const fileName = (req.params.fileName) // Init file name from URL
-  const fileExtension = utils.extension.getFromFileName(fileName) // Get the file extension from file name
+  const method = req.headers.method;
+  const fileName = req.params.fileName;
+  const validation = utils.validateRequest.getFile(req.headers, fileName); //! will move to the auth section or have a whole different validation handler
 
-  const validation = files.requestValidation(req.headers, fileExtension) //! will move to the auth section or have a whole different validation handler
-
-  logger.info("Request for file: " + fileName + " has been made")
-
-    try {
-
-      if (validation.status !== 200) {
-        // Check request headers and auth
-        throw new Error(`Error Validating Request, ${validation.message}`)
-      } else if (1 + 1 !== 2 /** will replace with authentication handler */) {
-        // authenticate request
-        throw new Error(`Error Authenticating Request, ${validation.message}`)
-      }
-
-      logger.info(validation.message)
-
-      const config = {
-        // to be deprecated once the connection info can be queried from a sql server
-        host: process.env.SFTP_URL,
-        port: process.env.SFTP_PORT, // Typically 22 for SFTP
-        username: process.env.SFTP_USERNAME,
-        password: process.env.SFTP_PASSWORD
-      }
-
-      if (method === 'S3') {
-
-        logger.info("Grabbing S3 File..."); // logging
-        const s3Data = await files.s3Functions.getFile(fileName); //Get file from the S3 server
-        res.attachment(fileName); // set response header
-        // res.contentType('image/*'); // set response content type
-        res.status(200).send(s3Data); // send image
-
-      } else if (method === 'SFTP') {
-
-        logger.info("Grabbing file from the file server..."); // logging
-        const imageBuffer = await files.sftpFunctions.get(fileName, config); // Retrieve the file from the SFTP server
-        res.contentType('image/*'); // Define Content Type
-        res.status(200).send(imageBuffer); // Send blob as response
-
-      }
-
-    } catch (err) {
-      logger.error(validation.message) // log
-
-      res.status((validation.status !== undefined ? validation.status : 400)).send((validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`));
-
-    } finally {
-      logger.info(`Request completed`)
+  // Validate the Request
+  const validateRequest = () => {
+    if (validation.status !== 200) {
+      throw new Error(`Error Validating Request, ${validation.message}`);
     }
+  };
 
+  // Get the File From Remote
+  const getFile = async () => {
+    const fileAsBuffer = await file.getFile(
+      fileName,
+      fileAccessConfig.ftp,
+      method
+    );
 
+    if (fileAsBuffer === null) {
+      res
+        .status(404)
+        .contentType("text/utf8")
+        .send("Error: File Not Found On Remote"); // send image
+    } else {
+      res
+        .status(200)
+        .contentType("image/*")
+        .attachment(fileName)
+        .send(fileAsBuffer); // send image
+    }
+  };
+
+  const handleErrors = (err) => {
+    res.status(validation.status !== undefined ? validation.status : 400);
+    res.send(validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`);
+  };
+
+  logger.info(
+    `Request for file: ${fileName} has been made, using ${method} method.`
+  );
+
+  try {
+    validateRequest();
+    getFile();
+  } catch (err) {
+    handleErrors(err);
+  } finally {
+    logger.info(`File request completed.`);
+  }
 });
 
 /**
  * * /listFilesDev to fetch file list
  */
-app.get('/listFilesDev', async (req, res) => {
+app.get("/listFilesDev", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  const method = req.headers['method']; // Look for connection method in HTTP header
-  logger.info('Connection Method: ' + method); // Log it
+  const method = req.headers["method"]; // Look for connection method in HTTP header
+  logger.info("Connection Method: " + method); // Log it
 
-  const config = {
-    // to be deprecated once the connection info can be queried from a sql server
-    host: process.env.SFTP_URL,
-    port: process.env.SFTP_PORT, // Typically 22 for SFTP
-    username: process.env.SFTP_USERNAME,
-    password: process.env.SFTP_PASSWORD
-  }
+  
+  const validation = utils.validateRequest.listFiles(req.headers);
+  const validateRequest = () => {
+    if (validation.status !== 200) {
+      throw new Error(`Error Validating Request, ${validation.message}`);
+    }
+  };
 
-  const validation = files.requestValidation(req.headers, "listFiles") //! will move to the auth section or have a whole different validation handler
+  const getFileList = async () => {
+    res.status(200).send(await file.listFiles(fileAccessConfig.ftp, method));
+  };
 
   try {
-
-    if (validation.status !== 200) {
-      // Check request headers and auth
-      throw new Error(`Error Validating Request, ${validation.message}`)
-    } else if (1 + 1 !== 2 /** will replace with authentication handler */) {
-      // authenticate request
-      throw new Error(`Error Authenticating Request, ${validation.message}`)
-    }
-
-    if (method === 'S3') {
-
-      // IF S3
-      logger.info("Listing S3 Files..."); // List files from the S3 server
-      res.status(200).send(await files.s3Functions.listFiles());
-
-    } else if (method === 'SFTP') {
-
-      // IF SFTP
-      logger.info("Listing SFTP Files..."); // List files from the SFTP server
-      res.status(200).send(await files.sftpFunctions.list(config));
-
-    }
+    validateRequest();
+    getFileList();
   } catch (err) {
-
-    logger.error('Error Retrieving File List: ' + err);
-
-    // Send error to the client and log it
-    res.status(400).send('Error: ' + err.message);
-    
-
+    logger.error("Error Retrieving File List: " + err);
+    res.status(400).send("Error: " + err.message);
   } finally {
-
-    logger.info('File List Request Completed')
-
+    logger.info("File List Request Completed");
   }
-}
-);
+});
 
 /**
  * * /uploadFile to upload file to sftp or s3
  */
-app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
+app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  const method = req.headers.method
-
-  const config = {
-    // to be deprecated once the connection info can be queried from a sql server
-    host: process.env.SFTP_URL,
-    port: process.env.SFTP_PORT, // Typically 22 for SFTP
-    username: process.env.SFTP_USERNAME,
-    password: process.env.SFTP_PASSWORD
-  }
+  const method = req.headers.method;
+  const fileName = req.file.originalname;
 
   logger.info("Upload Initiated...");
 
-  //const validation = files.requestValidation(req.headers) //! will move to the auth section or have a whole different validation handler
+  const validation = utils.validateRequest.uploadFile(req.headers, fileName);
+  const validateRequest = () => {
+    if (validation.status !== 200) {
+      throw new Error(`Error Validating Request, ${validation.message}`);
+    }
+  };
+
+  const localFilePath = req.file.path;
+  const fileData = fs.createReadStream(localFilePath);
+
+  const uploadFile = async () => {
+    const upload = await file.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
+    res.status(200).send(`${await upload}`);
+  };
 
   try {
-
-    /**
-    if (validation.status !== 200) {
-      throw new Error('Error Validating Request, ')
-    } else if (!req.file) {
-      throw new Error('Bad Request, missing file data')
-    } else {
-      logger.info('Request Validated');
-    }; */
-
-    if (method === 'S3') {
-      // Read the local file
-      logger.info("Reading File...");
-      const localFilePath = req.file.path;
-      const fileData = fs.createReadStream(localFilePath);
-
-      const fileName = req.file.originalname;
-
-      // Upload file to SFTP server
-      logger.info("Uploading File....")
-
-    // IF S3
-      logger.info("Listing S3 Files..."); // List files from the S3 server
-      res.status(200).send(await files.s3Functions.uploadFile(fileData, fileName));
-
-    } else if (method === 'SFTP') {
-      // Read the local file
-      logger.info("Reading File...");
-      const localFilePath = req.file.path;
-      const fileData = fs.createReadStream(localFilePath);
-
-      const fileName = req.file.originalname;
-
-      // Upload file to SFTP server
-      logger.info("Uploading File....")
-      await files.sftpFunctions.upload(fileData, fileName, config);
-
-      res.status(200).send(`File uploaded successfully. /home/ftpuser/files/ ${req.file.originalname}`);
-    }
+    validateRequest();
+    await uploadFile();
+    // res.status(200).send(`File uploaded successfully. /home/ftpuser/files/ ${req.file.originalname}`);
 
   } catch (err) {
     logger.error(err);
-    res.status(400).send({ "status": 'Error uploading file.' });
+    res.status(400).send({ status: "Error uploading file." });
   } finally {
     fs.unlinkSync(req.file.path);
   }
@@ -262,56 +213,34 @@ app.post('/uploadFile', upload.single('fileUpload'), async (req, res) => {
 /**
  * * /deleteFile to delete files
  */
-app.delete('/deleteFile/:fileName', async (req, res) => {
+app.delete("/deleteFile/:fileName", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
-  let fileName = (req.params.fileName)
-  logger.info(req.params.fileName)
+  const fileName = req.params.fileName;
+  const method = req.headers.method;
 
-  const method = req.headers.method
 
-  const config = {
-    // to be deprecated once the connection info can be queried from a sql server
-    host: process.env.SFTP_URL,
-    port: process.env.SFTP_PORT, // Typically 22 for SFTP
-    username: process.env.SFTP_USERNAME,
-    password: process.env.SFTP_PASSWORD
-  }
+  const validation = utils.validateRequest.deleteFile(req.headers, fileName);//! will move to the auth section or have a whole different validation handler
+  const validateRequest = () => {
+    if (validation.status !== 200) {
+      throw new Error(`Error Validating Request, ${validation.message}`);
+    }
+  };
 
-  const validation = files.requestValidation(req.headers, utils.extension.getFromFileName(fileName)) //! will move to the auth section or have a whole different validation handler
+  const deleteFile = async () => {
+    res.status(200).send(await file.deleteFile(fileName, fileAccessConfig.ftp, method));
+  };
+
+  const handleErrors = (err) => {
+    res.status(validation.status !== undefined ? validation.status : 400);
+    res.send(validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`);
+  };
 
   try {
-
-    // validate request
-    if (validation.status !== 200) {
-      throw new Error(`Error Validating Request, ${validation.message}`)
-    } else {
-      logger.info(validation.message);
-    };
-
-    logger.info("Deleting File....")
-
-    // if s3
-    if (method === 'S3') {
-      try {
-        res.status(200).send( await files.s3Functions.deleteFile(fileName))
-      } catch (err) {
-        res.status(400).send(`Error: ${err.message}`)
-      }
-    }
-    
-    // if sftp
-    if (method === 'SFTP') {    
-      try {
-        res.status(200).send(await files.sftpFunctions.delete(fileName, config));
-      } catch (err) {
-        res.status(400).send(`Error: ${err.message}`);
-      }
-
-    } 
-
+    validateRequest();
+    deleteFile();
   } catch (err) {
-    res.status(400).send(`Error: ${err}`);
+    handleErrors(err);
   } finally {
   }
 });
@@ -319,30 +248,29 @@ app.delete('/deleteFile/:fileName', async (req, res) => {
 /**
  * * /health for healthchecks in the future
  */
-app.get('/health', async (req, res) => {
-  res.status(200).send('Server Running')
-})
+app.get("/health", async (req, res) => {
+  res.status(200).send("Server Running");
+});
 
-app.get('/sqlTest', async (req, res) => {
-  const meow = await db.test()
-  logger.info("test2")
+app.get("/sqlTest", async (req, res) => {
+  const meow = await db.test();
+  logger.info("test2");
 
-  let files = ['meow', 'bob']
+  let files = ["meow", "bob"];
 
   for (var key in meow) {
     if (files.includes(meow[key].fileName) === true) {
-      logger.error('exists');
+      logger.error("exists");
     } else {
       files.push(meow[key].fileName);
     }
   }
 
-  res.status(200).send(files)
-})
+  res.status(200).send(files);
+});
 
 // START SERVER
+const PORT = process.env.PORT;
 httpServer.listen(PORT, () => {
-
   logger.info(`Server is running on port ${PORT}`);
-
 });
