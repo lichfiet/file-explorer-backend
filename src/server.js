@@ -22,7 +22,7 @@ const logger = require("./utils/logger.js"); // logging
 const app = express();
 app.use(cors());
 
-const upload = multer({ dest: "uploads/" }); // Set up multer for handling file uploads
+const upload = multer({ dest: "../uploads/" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
 const db = require("./utils/db.js"); // test
 db.connect(); // connect to sql DB
