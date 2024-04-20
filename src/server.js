@@ -25,14 +25,14 @@ app.use(cors());
 const upload = multer({ dest: "../uploads/" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
 const db = require("./utils/db.js"); // test
-db.connect(); // connect to sql DB
-db.refreshModels();
+//db.connect(); // connect to sql DB
+//db.refreshModels();
 
 /**
  * *Import Utilities
  */
 const utils = require("./utils/utils.js");
-const { files, file } = require("./utils/fileRequests.js"); // For s3 / sftp connections
+const { fileAccessController } = require("./utils/fileAccessController.js"); // For s3 / sftp connections
 logger.info("Imported Utilities");
 
 /**
@@ -101,23 +101,16 @@ app.get("/getFile/:fileName", async (req, res) => {
 
   // Get the File From Remote
   const getFile = async () => {
-    const fileAsBuffer = await file.getFile(
+    const fileAsBuffer = await fileAccessController.getFile(
       fileName,
       fileAccessConfig.ftp,
       method
     );
 
     if (fileAsBuffer === null) {
-      res
-        .status(404)
-        .contentType("text/utf8")
-        .send("Error: File Not Found On Remote"); // send image
+      res.status(404).contentType("text/utf8").send("Error: File Not Found On Remote"); // send image
     } else {
-      res
-        .status(200)
-        .contentType("image/*")
-        .attachment(fileName)
-        .send(fileAsBuffer); // send image
+      res.status(200).contentType("image/*").attachment(fileName).send(fileAsBuffer); // send image
     }
   };
 
@@ -147,9 +140,8 @@ app.get("/listFilesDev", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   const method = req.headers["method"]; // Look for connection method in HTTP header
-  logger.info("Connection Method: " + method); // Log it
+  logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}`); // Log it
 
-  
   const validation = utils.validateRequest.listFiles(req.headers);
   const validateRequest = () => {
     if (validation.status !== 200) {
@@ -158,7 +150,7 @@ app.get("/listFilesDev", async (req, res) => {
   };
 
   const getFileList = async () => {
-    res.status(200).send(await file.listFiles(fileAccessConfig.ftp, method));
+    res.status(200).send(await fileAccessController.listFiles(fileAccessConfig.ftp, method));
   };
 
   try {
@@ -193,18 +185,20 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
   const fileData = fs.createReadStream(localFilePath);
 
   const uploadFile = async () => {
-    const upload = await file.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
+    const upload = await fileAccessController.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
     res.status(200).send(`${await upload}`);
+  };
+
+  const handleErrors = (err) => {
+    res.status(validation.status !== undefined ? validation.status : 400);
+    res.send(validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`);
   };
 
   try {
     validateRequest();
     await uploadFile();
-    // res.status(200).send(`File uploaded successfully. /home/ftpuser/files/ ${req.file.originalname}`);
-
   } catch (err) {
-    logger.error(err);
-    res.status(400).send({ status: "Error uploading file." });
+    handleErrors(err);
   } finally {
     fs.unlinkSync(req.file.path);
   }
@@ -228,7 +222,7 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
   };
 
   const deleteFile = async () => {
-    res.status(200).send(await file.deleteFile(fileName, fileAccessConfig.ftp, method));
+    res.status(200).send(await fileAccessController.deleteFile(fileName, fileAccessConfig.ftp, method));
   };
 
   const handleErrors = (err) => {
@@ -254,8 +248,6 @@ app.get("/health", async (req, res) => {
 
 app.get("/sqlTest", async (req, res) => {
   const meow = await db.test();
-  logger.info("test2");
-
   let files = ["meow", "bob"];
 
   for (var key in meow) {

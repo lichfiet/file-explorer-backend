@@ -44,7 +44,7 @@ const validationHandlers = {
     },
 };
 
-const validate = {
+const validationController = {
         Default: (headers) => {
             return (validationHandlers.defaultValidations(headers) !== null)
         },
@@ -53,37 +53,37 @@ const validate = {
         }
 };
 
-const requestValidationController = {
+const requestValidatior = {
     getFile: (headers, fileName) => {
-        if (validate.Default(headers) === true) {
-            return validate.Default(headers)
-        } else if (validate.FileInfo(fileName) === true) {
-            return validate.FileInfo(fileName)
+        if (validationController.Default(headers) === true) {
+            return validationController.Default(headers)
+        } else if (validationController.FileInfo(fileName) === true) {
+            return validationController.FileInfo(fileName)
         } else {
             return { message: "Valid Request", status: 200, };
         }
     },
     listFiles: (headers) => {
-        if (validate.Default(headers) === true) {
-            return validate.Default(headers)
+        if (validationController.Default(headers) === true) {
+            return validationController.Default(headers)
         } else {
             return { message: "Valid Request", status: 200, };
         }
     },
     deleteFile: (headers, fileName) => {
-        if (validate.Default(headers) === true) {
-            return validate.Default(headers)
-        } else if (validate.FileInfo(fileName) === true) {
-            return validate.FileInfo(fileName)
+        if (validationController.Default(headers) === true) {
+            return validationController.Default(headers)
+        } else if (validationController.FileInfo(fileName) === true) {
+            return validationController.FileInfo(fileName)
         } else {
             return { message: "Valid Request", status: 200, };
         }
     },
     uploadFile: (headers, fileName) => {
-        if (validate.Default(headers) === true) {
-            return validate.Default(headers)
-        } else if (validate.FileInfo(fileName) === true) {
-            return validate.FileInfo(fileName)
+        if (validationController.Default(headers) === true) {
+            return validationController.Default(headers)
+        } else if (validationController.FileInfo(fileName) === true) {
+            return validationController.FileInfo(fileName)
         } else {
             return { message: "Valid Request", status: 200, };
         }
@@ -91,7 +91,7 @@ const requestValidationController = {
 }
 
 /* Data Tools */
-const parseJson = (xml) => parser.toJson(xml)
+const parseXmlToJson = (xml) => parser.toJson(xml)
 
 
 module.exports = utils = {
@@ -101,14 +101,14 @@ module.exports = utils = {
     },
 
     data: {
-        xmlToJson: (xml) => parseJson(xml)
+        xmlToJson: (xml) => parseXmlToJson(xml)
     },
 
     validateRequest: {
-        getFile: (headers, fileName) => requestValidationController.getFile(headers, fileName),
-        listFiles: (headers) => requestValidationController.listFiles(headers),
-        deleteFile: (headers, fileName) => requestValidationController.deleteFile(headers, fileName),
-        uploadFile: (headers, fileName) => requestValidationController.uploadFile(headers, fileName),
-        modifyFile: (fileProperties, fileName) => requestValidationController.modifyFile(headers, fileName),
+        getFile: (headers, fileName) => requestValidatior.getFile(headers, fileName),
+        listFiles: (headers) => requestValidatior.listFiles(headers),
+        deleteFile: (headers, fileName) => requestValidatior.deleteFile(headers, fileName),
+        uploadFile: (headers, fileName) => requestValidatior.uploadFile(headers, fileName),
+        modifyFile: (fileProperties, fileName) => requestValidatior.modifyFile(headers, fileName),
     }
 }
