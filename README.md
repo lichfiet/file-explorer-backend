@@ -41,7 +41,7 @@ Before you can get started with development, you will need either a SFTP server 
 After this, you can take your API Gateway URL created, and plug it into your .env file.
 
 
-Once you are up and running, you can connect on [http://localhost:8443/](http://localhost:8443/) after. Any changes made in your `./game` folder will auto-update the website.
+Once you are up and running, you can connect on [http://localhost:8443/](http://localhost:8443/).
 
 ### Project Structure
 
