@@ -9,7 +9,7 @@ const fs = require("fs");
 const https = require("https");
 const http = require("http");
 
-const config = dotenv.config({ path: "./config.env" }); // Prints Local Variables
+const config = dotenv.config(); // Prints Local Variables
 
 /**
  * * Observability

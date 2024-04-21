@@ -1,3 +1,4 @@
 node_modules/
 sslcert/server.crt
 sslcert/server.key
+.env
