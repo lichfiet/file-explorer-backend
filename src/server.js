@@ -24,9 +24,9 @@ app.use(cors());
 
 const upload = multer({ dest: "../uploads/" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
-const db = require("./utils/db.js"); // test
-//db.connect(); // connect to sql DB
-//db.refreshModels();
+const dbController = require("./utils/db.js"); // test
+//dbController.connect(); // connect to sql DB
+//dbController.refreshModels();
 
 /**
  * *Import Utilities

@@ -1,6 +1,6 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
-const sequelize = new Sequelize("postgres", "postgres", "password", {
+const pgConnector = new Sequelize("postgres", "postgres", "password", {
 	database: process.env.PG_DATABASE,
 	username: process.env.PG_USERNAME,
 	password: process.env.PG_PASSWORD,
@@ -16,7 +16,7 @@ const sequelize = new Sequelize("postgres", "postgres", "password", {
 	logging: (msg) => logger.debug(`PG Database: ${msg}`),
 });
 
-const File = sequelize.define("File", {
+const File = pgConnector.define("File", {
 	fileName: {
 		type: DataTypes.STRING,
 		allowNull: false,
@@ -43,17 +43,17 @@ const File = sequelize.define("File", {
 	},
 });
 
-module.exports = db = {
+module.exports = dbController = {
 	connect: async () => {
 		try {
-			await sequelize.authenticate();
+			await pgConnector.authenticate();
 			logger.info("Connection has been established successfully.");
 		} catch (error) {
 			logger.error("Unable to connect to the database:", error);
 		}
 	},
 	refreshModels: () => {
-		sequelize.sync();
+		pgConnector.sync();
 	},
 	test: async () => {
 		await File.create({
