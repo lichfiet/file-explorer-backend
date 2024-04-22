@@ -33,6 +33,7 @@ const dbController = require("./utils/db.js"); // test
  */
 const utils = require("./utils/utils.js");
 const { fileAccessController } = require("./utils/fileAccessController.js"); // For s3 / sftp connections
+const { validationController } = require("./utils/requestValidationController.js"); // For request validation
 logger.info("Imported Utilities");
 
 /**
@@ -90,7 +91,7 @@ app.get("/getFile/:fileName", async (req, res) => {
 
   const method = req.headers.method;
   const fileName = req.params.fileName;
-  const validation = utils.validateRequest.getFile(req.headers, fileName); //! will move to the auth section or have a whole different validation handler
+  const validation = validationController.getFile(req.headers, fileName); //! will move to the auth section or have a whole different validation handler
 
   // Validate the Request
   const validateRequest = () => {
@@ -142,7 +143,7 @@ app.get("/listFilesDev", async (req, res) => {
   const method = req.headers["method"]; // Look for connection method in HTTP header
   logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}`); // Log it
 
-  const validation = utils.validateRequest.listFiles(req.headers);
+  const validation = validationController.listFiles(req.headers);
   const validateRequest = () => {
     if (validation.status !== 200) {
       throw new Error(`Error Validating Request, ${validation.message}`);
@@ -174,7 +175,7 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
 
   logger.info("Upload Initiated...");
 
-  const validation = utils.validateRequest.uploadFile(req.headers, fileName);
+  const validation = validationController.uploadFile(req.headers, fileName);
   const validateRequest = () => {
     if (validation.status !== 200) {
       throw new Error(`Error Validating Request, ${validation.message}`);
@@ -214,7 +215,7 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
   const method = req.headers.method;
 
 
-  const validation = utils.validateRequest.deleteFile(req.headers, fileName);//! will move to the auth section or have a whole different validation handler
+  const validation = validationController.deleteFile(req.headers, fileName);//! will move to the auth section or have a whole different validation handler
   const validateRequest = () => {
     if (validation.status !== 200) {
       throw new Error(`Error Validating Request, ${validation.message}`);
