@@ -38,10 +38,10 @@ logger.info("Imported Utilities");
 /**
  * * HTTPS Setup
  */
-const privateKey = fs.readFileSync("sslcert/server.key", "utf8"); // key
-const certificate = fs.readFileSync("sslcert/server.crt", "utf8"); // cert
-const credentials = { key: privateKey, cert: certificate };
-const httpsServer = https.createServer(credentials, app); // server var
+//const privateKey = fs.readFileSync("sslcert/server.key", "utf8"); // key
+//const certificate = fs.readFileSync("sslcert/server.crt", "utf8"); // cert
+//const credentials = { key: privateKey, cert: certificate };
+//const httpsServer = https.createServer(credentials, app); // server var
 
 const httpServer = http.createServer(app); // server var
 /**
