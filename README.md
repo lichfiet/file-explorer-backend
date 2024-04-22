@@ -1,11 +1,7 @@
 
 # file-explorer-backend
 
-This is the Node.js backend for the file explorer project, a full setup guide will exist in the [lichfiet/file-explorer-web](https://github.com/lichfiet/file-explorer-web) repository at some point, but this will walk you through getting setup for development of the backend 
-
-*(If using the S3 Method, you'll first need to setup your API Gateway and Bucket by following [this tutorial](https://github.com/lichfiet/file-explorer-infra)).*
-
-
+This is the Node.js backend for the file explorer project.
 
 ## Start Development
 This repository only contains the backend. The front end will be containerized at some point so you can build it and forget about it when developing.
@@ -17,7 +13,7 @@ This repository only contains the backend. The front end will be containerized a
 
 ### Initial Setup
 
-First, run the below commands in your linux terminal:
+First, run the below commands in your Linux terminal:
 
 ```bash
 git clone https://github.com/lichfiet/file-explorer-backend.git &&
