@@ -24,14 +24,13 @@ app.use(cors());
 
 const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
-const dbController = require("./utils/db.js"); // test
+//const dbController = require("./utils/db.js"); // test
 //dbController.connect(); // connect to sql DB
 //dbController.refreshModels();
 
 /**
  * *Import Utilities
  */
-const utils = require("./utils/utilityWrapper.js");
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
 const { validationController } = require("./utils/requestValidationController.js"); // For request validation
 logger.info("Imported Utilities");
