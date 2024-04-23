@@ -5,7 +5,7 @@ const SftpClient = require("ssh2-sftp-client");
 const sftpClient = new SftpClient();
 const sftpConnect = (config) => sftpClient.connect(config);
 const sftpDisconnect = () => sftpClient.end();
-const logger = require("../logger");
+const logger = require("../../middlewares/logger");
 
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType) {
@@ -82,7 +82,7 @@ const uploadFile = async function (fileData, test, config) {
 
 	logger.info("Communication Success...", "\n");
 
-	let upload = await sftpClient.put(fileData, test);
+	await sftpClient.put(fileData, test);
 
 	await sftpDisconnect();
 	logger.info("Request fulfilled, closing connection.", "\n");

@@ -2,7 +2,7 @@
  * Local Vars
  */
 const axios = require("axios");
-const logger = require("../logger");
+const logger = require("../../middlewares/logger");
 
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType) {

@@ -14,7 +14,7 @@ const config = dotenv.config(); // Prints Local Variables
 /**
  * * Observability
  */
-const logger = require("./utils/logger.js"); // logging
+const logger = require("./middlewares/logger.js"); // logging
 
 /**
  ** App Setup
@@ -22,7 +22,7 @@ const logger = require("./utils/logger.js"); // logging
 const app = express();
 app.use(cors());
 
-const upload = multer({ dest: "../uploads/" }); // Set up multer for handling file uploads
+const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
 const dbController = require("./utils/db.js"); // test
 //dbController.connect(); // connect to sql DB
@@ -31,8 +31,8 @@ const dbController = require("./utils/db.js"); // test
 /**
  * *Import Utilities
  */
-const utils = require("./utils/utils.js");
-const { fileAccessController } = require("./utils/fileAccessController.js"); // For s3 / sftp connections
+const utils = require("./utils/utilityWrapper.js");
+const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
 const { validationController } = require("./utils/requestValidationController.js"); // For request validation
 logger.info("Imported Utilities");
 
@@ -102,7 +102,7 @@ app.get("/getFile/:fileName", async (req, res) => {
 
   // Get the File From Remote
   const getFile = async () => {
-    const fileAsBuffer = await fileAccessController.getFile(
+    const fileAsBuffer = await fileAccessMethodController.getFile(
       fileName,
       fileAccessConfig.ftp,
       method
@@ -151,7 +151,7 @@ app.get("/listFilesDev", async (req, res) => {
   };
 
   const getFileList = async () => {
-    res.status(200).send(await fileAccessController.listFiles(fileAccessConfig.ftp, method));
+    res.status(200).send(await fileAccessMethodController.listFiles(fileAccessConfig.ftp, method));
   };
 
   try {
@@ -186,7 +186,7 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
   const fileData = fs.createReadStream(localFilePath);
 
   const uploadFile = async () => {
-    const upload = await fileAccessController.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
+    const upload = await fileAccessMethodController.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
     res.status(200).send(`${await upload}`);
   };
 
@@ -223,7 +223,7 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
   };
 
   const deleteFile = async () => {
-    res.status(200).send(await fileAccessController.deleteFile(fileName, fileAccessConfig.ftp, method));
+    res.status(200).send(await fileAccessMethodController.deleteFile(fileName, fileAccessConfig.ftp, method));
   };
 
   const handleErrors = (err) => {

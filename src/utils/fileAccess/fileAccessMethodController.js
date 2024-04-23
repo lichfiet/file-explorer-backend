@@ -1,24 +1,22 @@
 /**
  * App Packages
  */
-const axios = require("axios");
-const utils = require("./utils.js");
-const logger = require("./logger.js");
-const SftpClient = require("ssh2-sftp-client");
+const logger = require("../../middlewares/logger.js");
 
 /**
  * File Access Methods
  * - S3
  * - FTP
  */
-const { ftp } = require("./fileAccessMethods/ftpWrapper.js");
-const { s3 } = require("./fileAccessMethods/s3Wrapper.js");
+const { ftp } = require("./ftpWrapper.js");
+const { s3 } = require("./s3Wrapper.js");
 
 
 module.exports = {
-	fileAccessController: {
+	fileAccessMethodController: {
 		/**
 		 * getFile
+		 * 
 		 * @param {string} fileName 
 		 * @param {object} config 
 		 * @param {string} method 
@@ -34,6 +32,7 @@ module.exports = {
 		},
 		/**
 		 * deleteFile
+		 * 
 		 * @param {string} fileName 
 		 * @param {object} config 
 		 * @param {string} method 
@@ -48,6 +47,7 @@ module.exports = {
 		},
 		/**
 		 * listFiles
+		 * 
 		 * @param {object} config
 		 * @param {string} method
 		 * @returns {array}
@@ -61,6 +61,7 @@ module.exports = {
 		},
 		/**
 		 * uploadFile
+		 * 
 		 * @param {fileBuffer} fileData 
 		 * @param {string} fileName 
 		 * @param {object} config 
@@ -75,6 +76,7 @@ module.exports = {
 			}
 		},
 		/**
+		 * modifyFile
 		 * 
 		 * @param {object} fileProperties 
 		 * @param {string} fileName 
