@@ -106,7 +106,7 @@ const uploadFile = async function (fileData, fileName) {
 };
 
 const deleteFile = async (fileName, config) => {
-	logger.info("Deleting file from S3 Bucket");
+	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
 	try {
 
 		// ! INNEFFICIENT, WILL BE REPLACED WITH POSTGRES SEARCH
@@ -114,18 +114,18 @@ const deleteFile = async (fileName, config) => {
 		const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-explorer-s3-bucket/${fileName}`);
 
 		if (!fileList) {
-			throw new Error("No files found in bucket.");
+			return ({message: "No files found in bucket.", status: 200});
 		} else if (!fileList.includes(fileName)) {
-			throw new Error(`File requested for deletion does not exist, files look like: ${formattedContents}`);
+			return ({message: `File requested for deletion does not exist, files look like: ${fileList}`, status: 200});
 		} else if (fileList.includes(fileName) && response.status === 200) {
-			return ("File successfully deleted from S3 Bucket")
+			return ({message: "File successfully deleted from S3 Bucket", status: 200})
 		} else if (response.status !== 200) {
-			throw new Error(`Error received from S3 API: ${response.body}`);
+			return ({message: `Error received from S3 API: ${response.body}`, status: 500});
 		};
 
 	} catch (err) {
-		logger.error(err.message);
-		throw new Error(err.message);
+		logger.error(`Error Occurred Deleting File From Bucket: ${err}`);
+		return ({message: `Error Occurred Deleting File From Bucket: ${err}`, status: 500});
 	} finally {
 		logger.info("S3 Request Completed");
 	}

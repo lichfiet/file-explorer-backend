@@ -1,5 +1,0 @@
-# making a makefile soon but this holds it for now so I don't have to type it out when I make the makefile
-docker build -t file-explorer-backend:dev . --file ./development/Dockerfile --target=dev
-docker build -t file-explorer-backend:latest . --file ./development/Dockerfile --target=prod
-
-docker run -p 8443:8443 --name file-explorer-backend file-explorer-backend:dev

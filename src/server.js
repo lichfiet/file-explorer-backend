@@ -36,15 +36,6 @@ const { validationController } = require("./utils/requestValidationController.js
 logger.info("Imported Utilities");
 
 /**
- * * HTTPS Setup
- */
-//const privateKey = fs.readFileSync("sslcert/server.key", "utf8"); // key
-//const certificate = fs.readFileSync("sslcert/server.crt", "utf8"); // cert
-//const credentials = { key: privateKey, cert: certificate };
-//const httpsServer = https.createServer(credentials, app); // server var
-
-const httpServer = http.createServer(app); // server var
-/**
  *
  * Routes:
  * - /(Static Index Page)
@@ -85,49 +76,28 @@ app.get("/", (req, res) => {
  *
  * currently just takes /getFile/{fileName} argument in the URL,
  */
-app.get("/getFile/:fileName", async (req, res) => {
+app.get("/getFile/:fileName", validationController.getFile, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   const method = req.headers.method;
   const fileName = req.params.fileName;
-  const validation = validationController.getFile(req.headers, fileName); //! will move to the auth section or have a whole different validation handler
-
-  // Validate the Request
-  const validateRequest = () => {
-    if (validation.status !== 200) {
-      throw new Error(`Error Validating Request, ${validation.message}`);
-    }
-  };
 
   // Get the File From Remote
   const getFile = async () => {
-    const fileAsBuffer = await fileAccessMethodController.getFile(
-      fileName,
-      fileAccessConfig.ftp,
-      method
-    );
+    const fileAsBuffer = await fileAccessMethodController.getFile(fileName, fileAccessConfig.ftp, method);
 
-    if (fileAsBuffer === null) {
+    if (fileAsBuffer === null || fileAsBuffer === undefined) {
       res.status(404).contentType("text/utf8").send("Error: File Not Found On Remote"); // send image
     } else {
       res.status(200).contentType("image/*").attachment(fileName).send(fileAsBuffer); // send image
     }
   };
 
-  const handleErrors = (err) => {
-    res.status(validation.status !== undefined ? validation.status : 400);
-    res.send(validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`);
-  };
-
-  logger.info(
-    `Request for file: ${fileName} has been made, using ${method} method.`
-  );
-
   try {
-    validateRequest();
+    logger.debug(`Request for file: ${fileName} has been made, using ${method} method.`);
     getFile();
   } catch (err) {
-    handleErrors(err);
+    res.status(500).send(err);
   } finally {
     logger.info(`File request completed.`);
   }
@@ -136,50 +106,36 @@ app.get("/getFile/:fileName", async (req, res) => {
 /**
  * * /listFilesDev to fetch file list
  */
-app.get("/listFilesDev", async (req, res) => {
+app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   const method = req.headers["method"]; // Look for connection method in HTTP header
   logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}`); // Log it
-
-  const validation = validationController.listFiles(req.headers);
-  const validateRequest = () => {
-    if (validation.status !== 200) {
-      throw new Error(`Error Validating Request, ${validation.message}`);
-    }
-  };
 
   const getFileList = async () => {
     res.status(200).send(await fileAccessMethodController.listFiles(fileAccessConfig.ftp, method));
   };
 
   try {
-    validateRequest();
+    logger.debug(`Request to list files has been made, using ${method} method.`);
     getFileList();
   } catch (err) {
     logger.error("Error Retrieving File List: " + err);
     res.status(400).send("Error: " + err.message);
   } finally {
-    logger.info("File List Request Completed");
+    logger.debug("File List Request Completed");
   }
 });
 
 /**
  * * /uploadFile to upload file to sftp or s3
  */
-app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
+app.post("/uploadFile", validationController.uploadFile, upload.single("fileUpload"), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   const method = req.headers.method;
   const fileName = req.file.originalname;
 
   logger.info("Upload Initiated...");
-
-  const validation = validationController.uploadFile(req.headers, fileName);
-  const validateRequest = () => {
-    if (validation.status !== 200) {
-      throw new Error(`Error Validating Request, ${validation.message}`);
-    }
-  };
 
   const localFilePath = req.file.path;
   const fileData = fs.createReadStream(localFilePath);
@@ -189,53 +145,44 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
     res.status(200).send(`${await upload}`);
   };
 
-  const handleErrors = (err) => {
-    res.status(validation.status !== undefined ? validation.status : 400);
-    res.send(validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`);
-  };
-
   try {
-    validateRequest();
+    logger.debug(`Request to upload file: ${fileName} has been made, using ${method} method.`);
     await uploadFile();
   } catch (err) {
-    handleErrors(err);
+    res.status(500).send(err)
   } finally {
     fs.unlinkSync(req.file.path);
+    logger.info(`File upload request completed.`);
   }
 });
 
 /**
  * * /deleteFile to delete files
  */
-app.delete("/deleteFile/:fileName", async (req, res) => {
+app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   const fileName = req.params.fileName;
   const method = req.headers.method;
 
-
-  const validation = validationController.deleteFile(req.headers, fileName);//! will move to the auth section or have a whole different validation handler
-  const validateRequest = () => {
-    if (validation.status !== 200) {
-      throw new Error(`Error Validating Request, ${validation.message}`);
-    }
-  };
-
   const deleteFile = async () => {
-    res.status(200).send(await fileAccessMethodController.deleteFile(fileName, fileAccessConfig.ftp, method));
-  };
+    const request = await fileAccessMethodController.deleteFile(fileName, fileAccessConfig.ftp, method)
+    
+    if (request.status === 200) {
+      res.status(request.status).send(request.message);
+    } else if (request.status === 500) {
+      throw new Error(request.message);
+    }
 
-  const handleErrors = (err) => {
-    res.status(validation.status !== undefined ? validation.status : 400);
-    res.send(validation.message !== undefined ? `${err}` : `Error Retrieving File: ${err}`);
   };
 
   try {
-    validateRequest();
+    logger.debug(`Request to delete file: ${fileName} has been made, using ${method} method.`);
     deleteFile();
   } catch (err) {
-    handleErrors(err);
+    res.status(500).send(err);
   } finally {
+    logger.info(`File deletion request completed.`);
   }
 });
 
@@ -246,22 +193,9 @@ app.get("/health", async (req, res) => {
   res.status(200).send("Server Running");
 });
 
-app.get("/sqlTest", async (req, res) => {
-  const meow = await db.test();
-  let files = ["meow", "bob"];
-
-  for (var key in meow) {
-    if (files.includes(meow[key].fileName) === true) {
-      logger.error("exists");
-    } else {
-      files.push(meow[key].fileName);
-    }
-  }
-
-  res.status(200).send(files);
-});
 
 // START SERVER
+const httpServer = http.createServer(app);
 const PORT = process.env.PORT;
 httpServer.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
