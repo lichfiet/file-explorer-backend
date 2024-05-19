@@ -67,8 +67,8 @@ const requestValidatior = {
     },
     uploadFile: (req, res, next) => {
         try {
-            validateMethodHeader(req.headers);
-            validateFileName(req.params.fileName);
+            // validateMethodHeader(req.headers);
+            // validateFileName(req.params.fileName);
             next();
         } catch (err) {
             handleError(err, res);

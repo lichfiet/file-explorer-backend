@@ -130,7 +130,7 @@ app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
 /**
  * * /uploadFile to upload file to sftp or s3
  */
-app.post("/uploadFile", validationController.uploadFile, upload.single("fileUpload"), async (req, res) => {
+app.post("/uploadFile", /** validationController.uploadFile ,*/ upload.single("fileUpload"), async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   const method = req.headers.method;
   const fileName = req.file.originalname;
