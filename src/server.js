@@ -32,7 +32,7 @@ logger.debug("Env Vars: " + JSON.stringify(config));
  * *Import Utilities
  */
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
-const { validationController } = require("./utils/requestValidationController.js"); // For request validation
+const { validationController } = require("./middlewares/requestValidationController.js"); // For request validation
 logger.info("Imported Utilities");
 
 /**

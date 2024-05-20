@@ -1,4 +1,4 @@
-const utils = require('./utilityWrapper.js');
+const utils = require('../utils/utilityWrapper.js');
 
 const validateMethodHeader = (headers) => {
     let err = new Error();
