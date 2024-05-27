@@ -86,5 +86,6 @@ build-prod: ## Run for production
 	chmod u+x ./development/dev-init.sh
 	./development/dev-init.sh
 	@echo "\n...Building Web Container Image... \n"
+	export $(grep -v '^#' .env | xargs)
 	docker build -t $(APP_NAME):latest --platform linux/$(ARCH) -f ./development/Dockerfile . --target=prod
 	@echo "\n...Built Backend... \n"
