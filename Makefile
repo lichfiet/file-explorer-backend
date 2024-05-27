@@ -1,15 +1,15 @@
 # import config.
 # You can change the default config with `make cnf="config_special.env" build`
-$(shell mv .env.sample .env)
+$(shell cp .env.sample .env)
 cnf ?= ./.env 
 include $(cnf)
 export $(shell sed 's/=.*//' $(cnf))
 
 
 # Set the default shell
-ARCH ?= $(shell uname -m)
-ifeq ($(ARCH),x86_64)
-	ARCH=amd64
+export SYS_ARCH ?= $(shell uname -m)
+ifeq ($(SYS_ARCH),x86_64)
+	SYS_ARCH=amd64
 endif
 
 # HELP
@@ -27,11 +27,11 @@ help: ## This help.
 # Build the container
 build: ## Build the container
 	@echo "\n...Building Backend Container Image... \n"
-	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) -f ./development/Dockerfile . --target=dev
+	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=dev
 	@echo "\n...Built Backend... \n"
 
 build-nc: ## Build the container with no cache
-	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) --no-cache -f ./development/Dockerfile . --target=dev
+	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) --no-cache -f ./development/Dockerfile . --target=dev
 
 run: ## Run container on port configured in `config.env`
 	@echo "\n...Launching Dev Server... \n"
@@ -77,7 +77,7 @@ init: # Initailize development environment and start it
 	chmod u+x ./development/dev-init.sh
 	./development/dev-init.sh
 	@echo "\n...Building Web Container Image... \n"
-	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) -f ./development/Dockerfile . --target=dev
+	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=dev
 	@echo "\n...Development Environment Successfully Initialied... \n"
 	@echo "\nType 'make help' for a list of commands\n"
 
@@ -86,5 +86,5 @@ build-prod: ## Build for production
 	./development/dev-init.sh
 	@echo "\n...Building Web Container Image... \n"
 	export $(grep -v '^#' .env | xargs)
-	docker build -t $(APP_NAME):latest --platform linux/$(ARCH) -f ./development/Dockerfile . --target=prod
+	docker build -t $(APP_NAME):latest --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=prod
 	@echo "\n...Built Backend... \n"
