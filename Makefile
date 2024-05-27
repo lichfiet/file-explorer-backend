@@ -22,48 +22,39 @@ build: ## Build the container
 	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) -f ./development/Dockerfile . --target=dev
 	@echo "\n...Built Backend... \n"
 
-build-nc: ## Build the container without no cache
-	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) --no-cache -f ./development/Dockerfile .
+build-nc: ## Build the container with no cache
+	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) --no-cache -f ./development/Dockerfile . --target=dev
 
 run: ## Run container on port configured in `config.env`
 	@echo "\n...Launching Dev Server... \n"
 	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) $(APP_NAME):dev
 	@echo "\nHold ctrl and click this link 'http://localhost:${PORT}'\n"
 
-run-d: ## Run container on port configured in `config.env`
+run-d: ## Run container on port configured in `config.env` in detached mode
 	@echo "\n...Launching Dev Server... \n"
 	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) -d $(APP_NAME):dev
 	@echo "\nHold ctrl and click this link 'http://localhost:${PORT}'\n"
 
-stop:
+stop: ## Stop the running container
 	@echo "\n...Stopping Docker Container... \n"
-	docker stop ${APP_NAME}
+	-docker stop ${APP_NAME}
+	-docker compose -f ./docker/compose.yaml down
 	@echo "\n...Docker Container Stopped... \n"
 
-rm:
+rm: ## Remove the container
 	@echo "\n...Removing Docker Container... \n"
 	docker rm ${APP_NAME}
 	@echo "\n...Docker Container Removed... \n"
 
-start-compose: ## Start node and redis in docker compose
+start: ## WIP Docker compose
 	@echo "\n...Launching Dev Server... \n"
 	docker compose -f ./docker/compose.yaml up
 	@echo "\nHold ctrl and click this link 'http://localhost:8000'\n"
 
-start-compose-d: ## Start node and redis in docker compose
+start-d: ## WIP Docker compose in detached mode
 	@echo "\n...Launching Dev Server... \n"
 	docker compose -f ./docker/compose.yaml up -d
 	@echo "\nHold ctrl and click this link 'http://localhost:8000'\n"
-
-stop-compose: ## stop docker compose
-	@echo "\n...Stopping Docker Containers... \n"
-	docker compose -f ./docker/compose.yaml down
-
-start-nd: ## Start node not in container
-	@echo "\n...Launching Dev Server... \n"
-	npm run dev
-	@echo "\nHold ctrl and click this link 'http://localhost:8000'\n"
-
 
 
 # Clean Up
@@ -82,7 +73,7 @@ init: # Initailize development environment and start it
 	@echo "\n...Development Environment Successfully Initialied... \n"
 	@echo "\nType 'make help' for a list of commands\n"
 
-build-prod: ## Run for production
+build-prod: ## Build for production
 	chmod u+x ./development/dev-init.sh
 	./development/dev-init.sh
 	@echo "\n...Building Web Container Image... \n"
