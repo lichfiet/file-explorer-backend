@@ -19,11 +19,11 @@ help: ## This help.
 # Build the container
 build: ## Build the container
 	@echo "\n...Building Backend Container Image... \n"
-	docker build -t $(APP_NAME):dev --platform linux/amd64 -f ./development/Dockerfile . --target=dev
+	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) -f ./development/Dockerfile . --target=dev
 	@echo "\n...Built Backend... \n"
 
 build-nc: ## Build the container without no cache
-	docker build -t $(APP_NAME):dev --platform linux/amd64 --no-cache -f ./development/Dockerfile .
+	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) --no-cache -f ./development/Dockerfile .
 
 run: ## Run container on port configured in `config.env`
 	@echo "\n...Launching Dev Server... \n"
@@ -79,7 +79,7 @@ init: # Initailize development environment and start it
 	chmod u+x ./development/dev-init.sh
 	./development/dev-init.sh
 	@echo "\n...Building Web Container Image... \n"
-	docker build -t $(APP_NAME):dev --platform linux/amd64 -f ./development/Dockerfile . --target=dev
+	docker build -t $(APP_NAME):dev --platform linux/$(ARCH) -f ./development/Dockerfile . --target=dev
 	@echo "\n...Development Environment Successfully Initialied... \n"
 	@echo "\nType 'make help' for a list of commands\n"
 
@@ -87,5 +87,5 @@ build-prod: ## Run for production
 	chmod u+x ./development/dev-init.sh
 	./development/dev-init.sh
 	@echo "\n...Building Web Container Image... \n"
-	docker build -t $(APP_NAME):latest --platform linux/amd64 -f ./development/Dockerfile . --target=prod
+	docker build -t $(APP_NAME):latest --platform linux/$(ARCH) -f ./development/Dockerfile . --target=prod
 	@echo "\n...Built Backend... \n"
