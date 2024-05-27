@@ -6,6 +6,7 @@ WORKDIR /usr/app/
 FROM base AS install
 
 # Install make and python3 for node-gyp
+RUN apk update
 RUN apk add build-base python3 make 
 
 ## NODE MODULES
@@ -18,8 +19,6 @@ RUN mkdir -p /var/prod
 COPY package.json package-lock.json /var/prod/
 RUN cd /var/prod && npm install --production
 
-
-
 ##
 ## Development Build
 ## - copy dev dependencies and source code into final image
@@ -31,8 +30,6 @@ COPY ./ /usr/app/
 # run the app
 EXPOSE 8443/tcp
 CMD npm run dev
-
-
 
 ##
 ## Production Build
