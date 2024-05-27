@@ -72,46 +72,4 @@ fi
 
 rm -f error.log
 
-# ....| Check for .env file |.... #
-if [ ! -f ".env" ] && [ -f ".env.sample" ]; then 
-    echo -e "\n${BCyan}Renaming .env.sample to .env.....\n${NC}";
-    mv .env.sample .env; 
-    echo -e "${BGreen}${CMark}${BBlack} .env file created. ${NC} \n";
-else if [ ! -f ".env" ] && [ ! -f "sample.env" ]; then
-    echo -e "\n${BRed}${FMark}${Black}No .env file found. Please create a .env file before running the application. ${NC} \n";
-    exit 6
-else 
-    echo -e "\n${BGreen}${CMark}${BBlack} .env file found. ${NC}";
-fi
-fi
-
-# ....| Check for ARM64 Architecture |.... #
-export $(grep -v '^#' .env | xargs)
-
-if [ $(uname -m) == "arm64" ] || [ $(uname -m) == "aarch64" ] ; then
-    echo -e "\n${BRed}${BBold}!${BBlack} This script is not natively supported on ARM64 architecture. Attempting to update config${NC}";
-    sed -i '/^ARCH=/s/=.*/=arm64/' .env
-    export $(grep -v '^#' .env | xargs)
-    if [ $? -eq 0 ]; then
-        echo -e "\n${BGreen}${CMark}${BBlack} Architecture updated to ARM64. ${NC} \n";
-    else
-        echo -e "\n${BRed}${FMark}${Black} Error updating architecture to ARM64. Please update the .env file manually. ${NC} \n";
-        exit 7
-    fi
-else
-    export $(grep -v '^#' .env | xargs)
-    if [ $(uname -m) == "x86_64" ] && [ $(printenv ARCH) == "amd64" ]; then
-        echo -e "\n${BGreen}${CMark}${BBlack} Architecture is AMD_64, no update needed. ${NC} \n";
-    else
-        if [ $(uname -m) == "x86_64" ] || [ ! $(printenv ARCH) == "amd64" ];
-            then sed -i '/^ARCH=/s/=.*/=amd64/' .env
-            echo -e "\n${BGreen}${CMark}${BBlack} AMD_64 was detected, but .env conflicted. Architecture updated to AMD64. ${NC} \n";
-        fi
-    fi
-fi
-
-export $(grep -v '^#' .env | xargs)
-
-
-
 echo -e "${BGreen}${CMark}${BBlack} All Dependencies Installed Successfully. ${NC} \n"

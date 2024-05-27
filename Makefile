@@ -1,8 +1,16 @@
 # import config.
 # You can change the default config with `make cnf="config_special.env" build`
-cnf ?= ./.env
+$(shell mv .env.sample .env)
+cnf ?= ./.env 
 include $(cnf)
 export $(shell sed 's/=.*//' $(cnf))
+
+
+# Set the default shell
+ARCH ?= $(shell uname -m)
+ifeq ($(ARCH),x86_64)
+	ARCH=amd64
+endif
 
 # HELP
 # This will output the help for each task
