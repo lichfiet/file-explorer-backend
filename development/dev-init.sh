@@ -73,9 +73,9 @@ fi
 rm -f error.log
 
 # ....| Check for .env file |.... #
-if [ ! -f ".env" ] && [ -f "sample.env" ]; then 
-    echo -e "\n${BCyan}Renaming sample.env to .env.....\n${NC}";
-    mv sample.env .env; 
+if [ ! -f ".env" ] && [ -f ".env.sample" ]; then 
+    echo -e "\n${BCyan}Renaming .env.sample to .env.....\n${NC}";
+    mv .env.sample .env; 
     echo -e "${BGreen}${CMark}${BBlack} .env file created. ${NC} \n";
 else if [ ! -f ".env" ] && [ ! -f "sample.env" ]; then
     echo -e "\n${BRed}${FMark}${Black}No .env file found. Please create a .env file before running the application. ${NC} \n";
