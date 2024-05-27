@@ -47,10 +47,44 @@ Once you are up and running, you can connect on [http://localhost:8443/](http://
 
 ## Project Structure
 
+<details>
+    <summary>Project Structure Tree</summary>
+
+        .
+        ├── .dockerignore # Specifies files to ignore when building a Docker image
+        ├── .env.sample # Sample environment variables file
+        ├── .github/ # GitHub Actions workflow for building Docker image
+        ├── .gitignore # Specifies files to ignore in Git
+        ├── development/
+        │   ├── dev-init.sh # Initialization script for development environment
+        │   └── Dockerfile # Dockerfile for development environment
+        ├── Makefile # Makefile for automating tasks
+        ├── package.json # Node.js dependencies and scripts
+        ├── README.md # Documentation for the project
+        └── src/
+            ├── index.html # Entry point for the application
+            ├── middlewares/
+            │   ├── authentication.js # Middleware for handling authentication
+            │   ├── logger.js # Middleware for logging requests
+            │   └── validation.js # Middleware for validating requests
+            ├── server.js # Main server file
+            └── utils/
+                ├── db.js # Database utilities
+                ├── fileAccess/
+                │   ├── fileAccessMethodController.js # Controller for file access methods
+                │   ├── ftpWrapper.js # Wrapper for FTP file access
+                │   └── s3Wrapper.js # Wrapper for S3 file access
+                ├── utilityWrapper.js # General utilities
+                └── user/ # WIP
+
+</details>
+<br>
+
 - All node server files are stored in the `src/` directory.
 - Connection Method Wrappers are stored in `src/utils/fileAccessMethods/*`
 - A static testing page is served on the `/` api route. It will be re-writen to test all functionality at some point so you don't need to run the front application for development.
 - utils for common data manipulation and querying functions are stored in the `src/utils/utils.js file`
+
 
 ### To Do List:
 - Clean up code *(In progress always)*
@@ -62,3 +96,4 @@ Once you are up and running, you can connect on [http://localhost:8443/](http://
 - Create a scalable service for handling file uploads, and file downloads.
 - API Reference
 - Auth with api key or jwt token verification.
+
