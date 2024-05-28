@@ -7,7 +7,7 @@ FROM base AS install
 
 # Install make and python3 for node-gyp
 RUN apk update
-RUN apk add build-base python3 make 
+RUN apk add gcc g++ python3 make 
 
 ## NODE MODULES
 # Install Dev Node Modules

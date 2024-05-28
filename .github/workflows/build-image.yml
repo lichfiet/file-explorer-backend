@@ -14,8 +14,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Pull the Docker image
-      run: docker pull ${{ secrets.DOCKER_USERNAME }}:file-explorer-backend:latest
     - name: Build the Docker image
       run: docker build . --file development/Dockerfile --tag ${{ secrets.DOCKER_USERNAME }}/file-explorer-backend:latest --target=dev
     - name: Login to Docker Hub
