@@ -14,11 +14,12 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: Pull the Docker image
+      run: docker pull ${{ secrets.DOCKER_USERNAME }}:file-explorer-backend:latest
     - name: Build the Docker image
-      run: docker build . --file development/Dockerfile --tag file-explorer-backend:latest --target=dev
+      run: docker build . --file development/Dockerfile --tag ${{ secrets.DOCKER_USERNAME }}/file-explorer-backend:latest --target=dev
+    - name: Login to Docker Hub
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
     - name: Push the Docker image
       run: docker push ${{ secrets.DOCKER_USERNAME }}/file-explorer-backend:latest
-      env:
-        USERNAME: ${{ secrets.DOCKER_USERNAME }}
-        PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
 
