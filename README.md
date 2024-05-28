@@ -1,7 +1,7 @@
 
 # file-explorer-backend
 
-This is the Node.js backend for the file explorer project.
+This is the Node.js backend for the file explorer project. 
 
 ## Start Development
 This repository only contains the backend. The front end will be containerized at some point so you can build it and forget about it when developing.
