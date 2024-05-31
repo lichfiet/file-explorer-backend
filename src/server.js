@@ -6,7 +6,6 @@ const cors = require("cors");
 const dotenv = require("dotenv"); // for use of environment variables
 const multer = require("multer");
 const fs = require("fs");
-const https = require("https");
 const http = require("http");
 
 const config = dotenv.config(); // Prints Local Variables
@@ -21,6 +20,7 @@ const logger = require("./middlewares/logger.js"); // logging
  */
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
@@ -43,8 +43,8 @@ logger.info("Imported Utilities");
  * - /listFiles
  * - /uploadFile
  * - /deleteFile
- * - /copyFile // TO BE ADDED
  * - /renameFile // TO BE ADDED
+ * - /copyFile // TO BE ADDED
  *
  */
 
@@ -130,12 +130,12 @@ app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
 /**
  * * /uploadFile to upload file to sftp or s3
  */
-app.post("/uploadFile", /** validationController.uploadFile ,*/ upload.single("fileUpload"), async (req, res) => {
+app.post("/uploadFile", upload.single("fileUpload"), validationController.uploadFile, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   const method = req.headers.method;
   const fileName = req.file.originalname;
 
-  logger.info("Upload Initiated...");
+  logger.debug(`User (${"trevor"}) Made Request To Upload File: ${fileName} With Connection Method: ${method}`);
 
   const localFilePath = req.file.path;
   const fileData = fs.createReadStream(localFilePath);
@@ -185,6 +185,41 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
     logger.info(`File deletion request completed.`);
   }
 });
+
+
+/**
+ * * /renameFile to rename files
+ */
+app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  
+  const fileName = req.params.fileName;
+  const fileProperties = req.body.fileProperties;
+  const method = req.headers.method;
+  
+
+  const modifyFile = async () => {
+    const request = await fileAccessMethodController.modifyFile( fileProperties, fileName, fileAccessConfig.ftp, method);
+    logger.error(await request)
+
+    res.status(200).send(await request);
+
+    // if (request.status === 200) {
+    //   res.status(request.status).send(request.message);
+    // } else if (request.status === 500) {
+    //   throw new Error(request.message);
+    // }
+  };
+
+  try {
+    logger.debug(`Request to modify file: ${fileName} with data ${JSON.stringify(fileProperties)} has been made, using ${method} method.`);
+    modifyFile();
+  } catch (err) {
+    logger.error(err);
+    res.status(500).send(err);
+  }
+});
+
 
 /**
  * * /health for healthchecks in the future
