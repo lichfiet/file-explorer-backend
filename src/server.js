@@ -171,7 +171,7 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
     if (request.status === 200) {
       res.status(request.status).send(request.message);
     } else if (request.status === 500) {
-      throw new Error(request.message);
+      res.status(request.status).send(request.message);
     }
 
   };

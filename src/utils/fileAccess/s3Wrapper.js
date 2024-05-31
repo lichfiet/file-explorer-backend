@@ -52,7 +52,6 @@ const getFile = async (fileId, config) => {
 
 	} catch (err) {
 		logger.error("Error Occurred Requesting File From Bucket: " + err);
-		throw new Error(err);
 	} finally {
 		logger.debug("S3 Get Request Completed");
 	}
