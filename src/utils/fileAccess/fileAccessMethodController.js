@@ -85,7 +85,7 @@ module.exports = {
 		 */
 		modifyFile: async (newFileProperties, fileName, config, method) => {
 			if (method === "S3") {
-				return `Modify S3 Not Implemented Yet. Request for file ${fileName} with properties ${JSON.stringify(newFileProperties)} and config ${JSON.stringify(config)}`
+				return await s3.modifyFile(newFileProperties, fileName, config);
 				// return await s3.modifyFile(fileProperties, fileName, config);
 			} else if (method === "SFTP") {
 				return `Modify SFTP Not Implemented Yet. Request for file ${fileName} with properties ${JSON.stringify(newFileProperties)} and config ${JSON.stringify(config)}`

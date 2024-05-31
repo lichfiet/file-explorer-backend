@@ -176,9 +176,9 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
     
     // can't see if object exists before delete, succesful response should be good enough for now
     if (request.status !== undefined) {
-      res.status(request.status).send(request);
+      res.status(request.status).send(await request.message);
     } else {
-      res.status(200).send(await request);
+      res.status(200).send(await request.message);
     };
 
   };
@@ -208,8 +208,7 @@ app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, re
   const modifyFile = async () => {
 
     const request = await fileAccessMethodController.modifyFile( fileProperties, fileName, fileAccessConfig.ftp, method);
-    
-    res.status(200).send(await request);
+    res.status(200).send(await request.message);
 
     // if (request.status === 200) {
     //   res.status(request.status).send(request.message);

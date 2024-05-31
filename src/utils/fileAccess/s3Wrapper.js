@@ -1,10 +1,9 @@
 /**
  * Local Vars
  */
-const axios = require("axios");
 const logger = require("../../middlewares/logger");
 
-const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
 const s3Client = new S3Client();
 
 const { Readable } = require('stream');
@@ -80,10 +79,23 @@ const deleteFile = async (fileName, config) => {
 			Bucket: "file-explorer-s3-bucket",
 			Key: fileName
 		};
+		const requestInfo2 = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: fileName,
+			ObjectAttributes: ["ObjectSize"],
+		};
 
 		// will replace with the deleteObjects for multi object delete, or maybe keep this for single object delete for concurrency
+		const fileExists = await s3Client.send(new GetObjectAttributesCommand(requestInfo2)).then((data) => {
+			return data.$metadata.httpStatusCode === 200
+		});
+
+		logger.debug(`File Exists: ${await fileExists}`);
+
 		const response = await s3Client.send(new DeleteObjectCommand(requestInfo));
-		return (response.$metadata.httpStatusCode === 204) ? {status: 200, message: "File successfully delete from S3 Bucket"} : {status: 500, message: "Error deleting file from S3 Bucket"};
+	
+		
+		return (await response.$metadata.httpStatusCode === 204) ? { status: 200, message: "File successfully delete from S3 Bucket" } : handleErrors(response);
 
 	} catch (err) {
 		return handleErrors(err);
@@ -146,7 +158,35 @@ const listFiles = async function (config) {
 };
 
 
-const modifyFile = async function (fileName, config) {};
+// need to re-write to handle errors better
+const modifyFile = async function (fileProperties, fileName, config, method) {
+	logger.debug("Modifying File in S3 Bucket");
+
+	try {
+		requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			CopySource: "file-explorer-s3-bucket/" + fileName,
+			Key: fileProperties.name
+		};
+
+		const response = await s3Client.send(new CopyObjectCommand(requestInfo)).then(async (data) => {
+			if (data.$metadata.httpStatusCode === 200) { 
+				s3Client.send(new DeleteObjectCommand({Bucket: requestInfo.Bucket, Key: fileName}))
+			} else {
+				throw new Error("Error Copying File" + err)
+			}
+
+			return data
+		});
+
+		return (response.$metadata.httpStatusCode === 200) ? {status: 200, message: "File successfully modified in S3 Bucket"} : "Error modifying file in S3 Bucket";
+
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 Modify Request Completed");
+	}
+};
 
 module.exports = {
 	s3: {
