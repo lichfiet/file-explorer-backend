@@ -199,9 +199,9 @@ app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, re
   
 
   const modifyFile = async () => {
-    const request = await fileAccessMethodController.modifyFile( fileProperties, fileName, fileAccessConfig.ftp, method);
-    logger.error(await request)
 
+    const request = await fileAccessMethodController.modifyFile( fileProperties, fileName, fileAccessConfig.ftp, method);
+    
     res.status(200).send(await request);
 
     // if (request.status === 200) {

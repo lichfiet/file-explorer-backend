@@ -34,6 +34,10 @@ const validateFileName = (fileName) => {
     }
 };
 
+const validateFileProperties = (file) => {
+    let err = new Error();
+}
+
 
 const handleError = (err, res) => {
     logger.error(err.message);
@@ -78,8 +82,8 @@ const requestValidatior = {
     },
     modifyFile: (req, res, next) => {
         try {
-            // validateMethodHeader(req.headers);
-            // validateFileName(req.params.fileName);
+            validateMethodHeader(req.headers);
+            validateFileProperties(req.body);
             next();
         } catch (err) {
             logger.debug(err);
