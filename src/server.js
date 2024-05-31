@@ -142,11 +142,17 @@ app.post("/uploadFile", upload.single("fileUpload"), validationController.upload
 
   const uploadFile = async () => {
     const upload = await fileAccessMethodController.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
-    res.status(200).send(`${await upload}`);
+    
+    if (upload.status !== undefined) {
+      res.status(upload.status).send(upload.message);
+    } else {
+      res.status(200).send(upload);
+    } 
+
   };
 
   try {
-    logger.debug(`Request to upload file: ${fileName} has been made, using ${method} method.`);
+    logger.info(`Request to upload file: ${fileName} has been made, using ${method} method.`);
     await uploadFile();
   } catch (err) {
     res.status(500).send(err)
@@ -168,11 +174,12 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
   const deleteFile = async () => {
     const request = await fileAccessMethodController.deleteFile(fileName, fileAccessConfig.ftp, method)
     
-    if (request.status === 200) {
-      res.status(request.status).send(request.message);
-    } else if (request.status === 500) {
-      res.status(request.status).send(request.message);
-    }
+    // can't see if object exists before delete, succesful response should be good enough for now
+    if (request.status !== undefined) {
+      res.status(request.status).send(request);
+    } else {
+      res.status(200).send(await request);
+    };
 
   };
 

@@ -4,7 +4,7 @@
 const axios = require("axios");
 const logger = require("../../middlewares/logger");
 
-const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand } = require("@aws-sdk/client-s3");
 const s3Client = new S3Client();
 
 const { Readable } = require('stream');
@@ -15,6 +15,7 @@ class File {
 		this.fileType = fileType;
 		this.fileExtension = fileExtension;
 		this.fileExtensionType = fileExtensionType;
+		this.directory = '/';
 	}
 }
 
@@ -24,7 +25,8 @@ const createFile = (name) => {
 		type === "-" ? utils.extension.getFromFileName(name) : "Dir";
 	const extensionType =
 		type === "-" ? utils.extension.checkValid(fileExtension)[0] : "Dir";
-	return new File(name, type, fileExtension, extensionType);
+	const directory = '/'
+	return new File(name, type, fileExtension, extensionType, directory);
 };
 
 /**
@@ -69,78 +71,80 @@ const getFile = async (fileId, config) => {
     }
 };
 
-const listFiles = async (config) => {
-	// ! method will be deprecated at some point, will use SQL to index files and then query uuids in folders
-	logger.info("Requesting files from S3 Bucket");
-
-	try {
-		// Get data from s3 and convert to JSON
-		const response = await axios.get(`${process.env.S3_URL}/listFiles/file-explorer-s3-bucket`);
-		let jsonData = utils.data.xmlToJson(response.data);
-		const extractedFiles = JSON.parse(jsonData).ListBucketResult.Contents;
-		logger.info("Files Extracted: " + JSON.stringify(!extractedFiles ? "No Files" : extractedFiles.length));
-
-		// Format files into array of File objects
-		let formattedContents = [];
-		if (extractedFiles === undefined) {
-			logger.info("No Files Found");
-			formattedContents = [new File("No Files", "d", "Dir", "Dir")];
-		} else {
-			logger.info("Files found, formatting...");
-			formattedContents = []
-				.concat(extractedFiles)
-				.map((file) => createFile(file.Key));
-			logger.info("Files Returned: " + formattedContents.length);
-		}
-
-		return formattedContents;
-	} catch (err) {
-		logger.error("Error Occured Requesting File From Bucket: " + err);
-	} finally {
-		logger.info("S3 Request Completed");
-	}
-};
-
-const uploadFile = async function (fileData, fileName) {
-	logger.info("Uploading file to S3 Bucket");
-
-	try {
-		const upload = await axios.put( `${process.env.S3_URL}/uploadFile/file-explorer-s3-bucket/${fileName}`, fileData );
-
-		logger.info("Sending upload status");
-		return (upload.status === 200) ? "File successfully uploaded to S3 Bucket" : "Error uploading file to S3 Bucket";
-	} catch (err) {
-		logger.error("Error Occurred Uploading File To Bucket: " + err);
-	} finally {
-		logger.info("S3 Upload Request Completed");
-	}
-};
 
 const deleteFile = async (fileName, config) => {
 	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
+
 	try {
-
-		// ! INNEFFICIENT, WILL BE REPLACED WITH POSTGRES SEARCH
-		const fileList = (await listFiles(config)).map((file) => file.fileName);
-		const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-explorer-s3-bucket/${fileName}`);
-
-		if (!fileList) {
-			return ({message: "No files found in bucket.", status: 200});
-		} else if (!fileList.includes(fileName)) {
-			return ({message: `File requested for deletion does not exist, files look like: ${fileList}`, status: 200});
-		} else if (fileList.includes(fileName) && response.status === 200) {
-			return ({message: "File successfully deleted from S3 Bucket", status: 200})
-		} else if (response.status !== 200) {
-			return ({message: `Error received from S3 API: ${response.body}`, status: 500});
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: fileName
 		};
 
+		// will replace with the deleteObjects for multi object delete, or maybe keep this for single object delete for concurrency
+		const response = await s3Client.send(new DeleteObjectCommand(requestInfo));
+		return (response.$metadata.httpStatusCode === 204) ? {status: 200, message: "File successfully delete from S3 Bucket"} : {status: 500, message: "Error deleting file from S3 Bucket"};
+
 	} catch (err) {
-		logger.error(`Error Occurred Deleting File From Bucket: ${err}`);
-		return ({message: `Error Occurred Deleting File From Bucket: ${err}`, status: 500});
+		return handleErrors(err);
 	} finally {
-		logger.info("S3 Request Completed");
+		logger.debug(`S3 Delete for Filename: ${fileName} Completed`);
+	}
+}
+
+const uploadFile = async (fileData, fileName, config) => {
+	logger.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: fileName,
+			Body: fileData
+		};
+
+		const response = await s3Client.send(new PutObjectCommand(requestInfo));
+		return (response.$metadata.httpStatusCode === 200) ? "File successfully uploaded to S3 Bucket" : "Error uploading file to S3 Bucket";
+
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug(`S3 Upload for Filename: ${fileName} Completed`);
 	}
 };
+
+const listFiles = async function (config) {
+	logger.debug("Requesting File List from S3 Bucket");
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+		};
+	
+		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
+		let files = [];
+
+		logger.debug("contents:")
+		logger.debug(response.Contents)
+	
+		if (response.Contents === undefined) {
+			logger.debug("No Files Found");
+			files = [new File("No Files", "d", "Dir", "Dir", '/')];
+		} else {
+			files = response.Contents.map((file) => {
+				return createFile(file.Key);
+				;
+			});
+			logger.debug("Files Returned: " + files.length);
+		}
+	
+		return files;
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 List Request Completed");
+	}
+};
+
 
 const modifyFile = async function (fileName, config) {};
 
