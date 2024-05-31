@@ -4,6 +4,11 @@
 const axios = require("axios");
 const logger = require("../../middlewares/logger");
 
+const { S3Client, GetObjectCommand } = require("@aws-sdk/client-s3");
+const s3Client = new S3Client();
+
+const { Readable } = require('stream');
+
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType) {
 		this.fileName = fileName;
@@ -26,35 +31,42 @@ const createFile = (name) => {
  * Public Vars
  */
 
+const handleErrors = (err) => {
+	logger.error(`Error Occurred Requesting File From Bucket: ${err}`);
+
+	const rawStatus = err.$metadata.httpStatusCode;
+	const rawMessage = err.$metadata.requestId;
+	const status = rawStatus === undefined ? 500 : rawStatus;
+	const message = rawMessage === undefined ? "Error Occurred Requesting File From Bucket" : rawMessage;
+
+	return { status: status, message: message };
+};
+
 const getFile = async (fileId, config) => {
 	// fileId will eventually be uuid generated on image pull, but right now it's just a file name
 	// uuid will be sent down as part of a separate uuid retrievel in a higher level function
 
-	try {
-
-		logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${config}`);
-		const response = await axios.get(`${process.env.S3_URL}/getFile/file-explorer-s3-bucket/${fileId}`, { responseType: "arraybuffer", validateStatus: false });
+    try {
+        logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
         
-        // ? if response is good, return the file, if not found, return null, if bad request, throw error 
-		if (response.data && response.status !== 404) {
-			return Buffer.from(response.data, "binary"); // Convert array buffer to Buffer
-		} else if (response.status === 404) {
-            return null;
-        } else if (response.status === 400) {
-			logger.error("Bad Request.");
-			logger.debug(response);
-			throw new Error("Bad Request.");
-		} else {
-			logger.debug('Received bad reponse from S3.');
-			logger.debug(response);
-			throw new Error(`Unknown Error. Received Status from S3: ${response.status}`);
-		}
+        const requestInfo = {
+            Bucket: "file-explorer-s3-bucket",
+            Key: fileId,
+        };
+        
+        const response = await s3Client.send(new GetObjectCommand(requestInfo));
 
-	} catch (err) {
-		logger.error("Error Occurred Requesting File From Bucket: " + err);
-	} finally {
-		logger.debug("S3 Get Request Completed");
-	}
+        const chunks = [];
+        for await (const chunk of Readable.from(response.Body)) {
+            chunks.push(chunk);
+        }
+        return Buffer.concat(chunks);
+
+    } catch (err) {
+		handleErrors(err);
+    } finally {
+        logger.debug("S3 Get Request Completed");
+    }
 };
 
 const listFiles = async (config) => {
@@ -138,6 +150,6 @@ module.exports = {
 		uploadFile,
 		deleteFile,
 		listFiles,
-		modifyFile,
+		modifyFile
 	},
 };
