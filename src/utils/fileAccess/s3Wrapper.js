@@ -35,7 +35,7 @@ const handleErrors = (err) => {
 	logger.error(`Error Occurred Requesting File From Bucket: ${err}`);
 
 	const rawStatus = err.$metadata.httpStatusCode;
-	const rawMessage = err.$metadata.requestId;
+	const rawMessage = 'Unable To Fulfill Request: ' + err.message;
 	const status = rawStatus === undefined ? 500 : rawStatus;
 	const message = rawMessage === undefined ? "Error Occurred Requesting File From Bucket" : rawMessage;
 
@@ -63,7 +63,7 @@ const getFile = async (fileId, config) => {
         return Buffer.concat(chunks);
 
     } catch (err) {
-		handleErrors(err);
+		return handleErrors(err);
     } finally {
         logger.debug("S3 Get Request Completed");
     }

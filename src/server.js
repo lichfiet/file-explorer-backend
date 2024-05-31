@@ -86,20 +86,20 @@ app.get("/getFile/:fileName", validationController.getFile, async (req, res) => 
   const getFile = async () => {
     const fileAsBuffer = await fileAccessMethodController.getFile(fileName, fileAccessConfig.ftp, method);
 
-    if (fileAsBuffer === null || fileAsBuffer === undefined) {
-      res.status(404).contentType("text/utf8").send("Error: File Not Found On Remote"); // send image
+    if (fileAsBuffer.status !== undefined) {
+      res.status(fileAsBuffer.status).send(fileAsBuffer.message);
     } else {
       res.status(200).contentType("image/*").attachment(fileName).send(fileAsBuffer); // send image
     }
   };
 
   try {
-    logger.debug(`Request for file: ${fileName} has been made, using ${method} method.`);
-    getFile();
+    logger.info(`Request for file: ${fileName} has been made, using ${method} method.`);
+    await getFile();
   } catch (err) {
     res.status(500).send(err);
   } finally {
-    logger.info(`File request completed.`);
+    logger.info(`Request for file: ${fileName} was completed.`);
   }
 });
 
