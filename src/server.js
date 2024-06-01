@@ -234,6 +234,9 @@ app.get("/health", async (req, res) => {
   res.status(200).send("Server Running");
 });
 
+process.on('uncaughtException', function (err) {
+  logger.error(err);
+});
 
 // START SERVER
 const httpServer = http.createServer(app);
