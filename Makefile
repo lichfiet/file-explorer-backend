@@ -1,6 +1,5 @@
 # import config.
 # You can change the default config with `make cnf="config_special.env" build`
-$(shell cp .env.sample .env)
 cnf ?= ./.env 
 include $(cnf)
 export $(shell sed 's/=.*//' $(cnf))
