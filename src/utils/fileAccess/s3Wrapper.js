@@ -1,8 +1,12 @@
 /**
  * Local Vars
  */
-const axios = require("axios");
 const logger = require("../../middlewares/logger");
+
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
+const s3Client = new S3Client();
+
+const { Readable } = require('stream');
 
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType) {
@@ -10,6 +14,7 @@ class File {
 		this.fileType = fileType;
 		this.fileExtension = fileExtension;
 		this.fileExtensionType = fileExtensionType;
+		this.directory = '/';
 	}
 }
 
@@ -19,119 +24,169 @@ const createFile = (name) => {
 		type === "-" ? utils.extension.getFromFileName(name) : "Dir";
 	const extensionType =
 		type === "-" ? utils.extension.checkValid(fileExtension)[0] : "Dir";
-	return new File(name, type, fileExtension, extensionType);
+	const directory = '/'
+	return new File(name, type, fileExtension, extensionType, directory);
 };
 
 /**
  * Public Vars
  */
 
+const handleErrors = (err) => {
+	logger.error(`Error Occurred Requesting File From Bucket: ${err}`);
+
+	const rawStatus = err.$metadata.httpStatusCode;
+	const rawMessage = 'Unable To Fulfill Request: ' + err.message;
+	const status = rawStatus === undefined ? 500 : rawStatus;
+	const message = rawMessage === undefined ? "Error Occurred Requesting File From Bucket" : rawMessage;
+
+	return { status: status, message: message };
+};
+
 const getFile = async (fileId, config) => {
 	// fileId will eventually be uuid generated on image pull, but right now it's just a file name
 	// uuid will be sent down as part of a separate uuid retrievel in a higher level function
 
-	try {
-
-		logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${config}`);
-		const response = await axios.get(`${process.env.S3_URL}/getFile/file-explorer-s3-bucket/${fileId}`, { responseType: "arraybuffer", validateStatus: false });
+    try {
+        logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
         
-        // ? if response is good, return the file, if not found, return null, if bad request, throw error 
-		if (response.data && response.status !== 404) {
-			return Buffer.from(response.data, "binary"); // Convert array buffer to Buffer
-		} else if (response.status === 404) {
-            return null;
-        } else if (response.status === 400) {
-			logger.error("Bad Request.");
-			logger.debug(response);
-			throw new Error("Bad Request.");
-		} else {
-			logger.debug('Received bad reponse from S3.');
-			logger.debug(response);
-			throw new Error(`Unknown Error. Received Status from S3: ${response.status}`);
-		}
+        const requestInfo = {
+            Bucket: "file-explorer-s3-bucket",
+            Key: fileId,
+        };
+        
+        const response = await s3Client.send(new GetObjectCommand(requestInfo));
 
-	} catch (err) {
-		logger.error("Error Occurred Requesting File From Bucket: " + err);
-		throw new Error(err);
-	} finally {
-		logger.debug("S3 Get Request Completed");
-	}
+        const chunks = [];
+        for await (const chunk of Readable.from(response.Body)) {
+            chunks.push(chunk);
+        }
+        return Buffer.concat(chunks);
+
+    } catch (err) {
+		return handleErrors(err);
+    } finally {
+        logger.debug("S3 Get Request Completed");
+    }
 };
 
-const listFiles = async (config) => {
-	// ! method will be deprecated at some point, will use SQL to index files and then query uuids in folders
-	logger.info("Requesting files from S3 Bucket");
-
-	try {
-		// Get data from s3 and convert to JSON
-		const response = await axios.get(`${process.env.S3_URL}/listFiles/file-explorer-s3-bucket`);
-		let jsonData = utils.data.xmlToJson(response.data);
-		const extractedFiles = JSON.parse(jsonData).ListBucketResult.Contents;
-		logger.info("Files Extracted: " + JSON.stringify(!extractedFiles ? "No Files" : extractedFiles.length));
-
-		// Format files into array of File objects
-		let formattedContents = [];
-		if (extractedFiles === undefined) {
-			logger.info("No Files Found");
-			formattedContents = [new File("No Files", "d", "Dir", "Dir")];
-		} else {
-			logger.info("Files found, formatting...");
-			formattedContents = []
-				.concat(extractedFiles)
-				.map((file) => createFile(file.Key));
-			logger.info("Files Returned: " + formattedContents.length);
-		}
-
-		return formattedContents;
-	} catch (err) {
-		logger.error("Error Occured Requesting File From Bucket: " + err);
-	} finally {
-		logger.info("S3 Request Completed");
-	}
-};
-
-const uploadFile = async function (fileData, fileName) {
-	logger.info("Uploading file to S3 Bucket");
-
-	try {
-		const upload = await axios.put( `${process.env.S3_URL}/uploadFile/file-explorer-s3-bucket/${fileName}`, fileData );
-
-		logger.info("Sending upload status");
-		return (upload.status === 200) ? "File successfully uploaded to S3 Bucket" : "Error uploading file to S3 Bucket";
-	} catch (err) {
-		logger.error("Error Occurred Uploading File To Bucket: " + err);
-	} finally {
-		logger.info("S3 Upload Request Completed");
-	}
-};
 
 const deleteFile = async (fileName, config) => {
 	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
+
 	try {
-
-		// ! INNEFFICIENT, WILL BE REPLACED WITH POSTGRES SEARCH
-		const fileList = (await listFiles(config)).map((file) => file.fileName);
-		const response = await axios.delete(`${process.env.S3_URL}/deleteFile/file-explorer-s3-bucket/${fileName}`);
-
-		if (!fileList) {
-			return ({message: "No files found in bucket.", status: 200});
-		} else if (!fileList.includes(fileName)) {
-			return ({message: `File requested for deletion does not exist, files look like: ${fileList}`, status: 200});
-		} else if (fileList.includes(fileName) && response.status === 200) {
-			return ({message: "File successfully deleted from S3 Bucket", status: 200})
-		} else if (response.status !== 200) {
-			return ({message: `Error received from S3 API: ${response.body}`, status: 500});
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: fileName
+		};
+		const requestInfo2 = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: fileName,
+			ObjectAttributes: ["ObjectSize"],
 		};
 
+		// will replace with the deleteObjects for multi object delete, or maybe keep this for single object delete for concurrency
+		const fileExists = await s3Client.send(new GetObjectAttributesCommand(requestInfo2)).then((data) => {
+			return data.$metadata.httpStatusCode === 200
+		});
+
+		logger.debug(`File Exists: ${await fileExists}`);
+
+		const response = await s3Client.send(new DeleteObjectCommand(requestInfo));
+	
+		
+		return (await response.$metadata.httpStatusCode === 204) ? { status: 200, message: "File successfully delete from S3 Bucket" } : handleErrors(response);
+
 	} catch (err) {
-		logger.error(`Error Occurred Deleting File From Bucket: ${err}`);
-		return ({message: `Error Occurred Deleting File From Bucket: ${err}`, status: 500});
+		return handleErrors(err);
 	} finally {
-		logger.info("S3 Request Completed");
+		logger.debug(`S3 Delete for Filename: ${fileName} Completed`);
+	}
+}
+
+const uploadFile = async (fileData, fileName, config) => {
+	logger.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: fileName,
+			Body: fileData
+		};
+
+		const response = await s3Client.send(new PutObjectCommand(requestInfo));
+		return (response.$metadata.httpStatusCode === 200) ? "File successfully uploaded to S3 Bucket" : "Error uploading file to S3 Bucket";
+
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug(`S3 Upload for Filename: ${fileName} Completed`);
 	}
 };
 
-const modifyFile = async function (fileName, config) {};
+const listFiles = async function (config) {
+	logger.debug("Requesting File List from S3 Bucket");
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+		};
+	
+		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
+		let files = [];
+
+		logger.debug("contents:")
+		logger.debug(response.Contents)
+	
+		if (response.Contents === undefined) {
+			logger.debug("No Files Found");
+			files = [new File("No Files", "d", "Dir", "Dir", '/')];
+		} else {
+			files = response.Contents.map((file) => {
+				return createFile(file.Key);
+				;
+			});
+			logger.debug("Files Returned: " + files.length);
+		}
+	
+		return files;
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 List Request Completed");
+	}
+};
+
+
+// need to re-write to handle errors better
+const modifyFile = async function (fileProperties, fileName, config, method) {
+	logger.debug("Modifying File in S3 Bucket");
+
+	try {
+		requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			CopySource: "file-explorer-s3-bucket/" + fileName,
+			Key: fileProperties.name
+		};
+
+		const response = await s3Client.send(new CopyObjectCommand(requestInfo)).then(async (data) => {
+			if (data.$metadata.httpStatusCode === 200) { 
+				s3Client.send(new DeleteObjectCommand({Bucket: requestInfo.Bucket, Key: fileName}))
+			} else {
+				throw new Error("Error Copying File" + err)
+			}
+
+			return data
+		});
+
+		return (response.$metadata.httpStatusCode === 200) ? {status: 200, message: "File successfully modified in S3 Bucket"} : "Error modifying file in S3 Bucket";
+
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 Modify Request Completed");
+	}
+};
 
 module.exports = {
 	s3: {
@@ -139,6 +194,6 @@ module.exports = {
 		uploadFile,
 		deleteFile,
 		listFiles,
-		modifyFile,
+		modifyFile
 	},
 };

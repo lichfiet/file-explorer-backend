@@ -1,4 +1,5 @@
 const utils = require('../utils/utilityWrapper.js');
+const logger = require('./logger.js');
 
 const validateMethodHeader = (headers) => {
     let err = new Error();
@@ -33,8 +34,13 @@ const validateFileName = (fileName) => {
     }
 };
 
+const validateFileProperties = (file) => {
+    let err = new Error();
+}
+
 
 const handleError = (err, res) => {
+    logger.error(err.message);
     res.status(err.status).send(err.message);
 };
 
@@ -67,13 +73,23 @@ const requestValidatior = {
     },
     uploadFile: (req, res, next) => {
         try {
-            // validateMethodHeader(req.headers);
-            // validateFileName(req.params.fileName);
+            validateMethodHeader(req.headers);
+            validateFileName(req.file.originalname);
             next();
         } catch (err) {
             handleError(err, res);
         } finally { };
     },
+    modifyFile: (req, res, next) => {
+        try {
+            validateMethodHeader(req.headers);
+            validateFileProperties(req.body);
+            next();
+        } catch (err) {
+            logger.debug(err);
+            //handleError(err, res);
+        } finally { };
+    }
 }
 
 
@@ -84,7 +100,7 @@ module.exports = {
         getFile: (req, res, next) => requestValidatior.getFile(req, res, next),
         listFiles: (req, res, next) => requestValidatior.listFiles(req, res, next),
         deleteFile: (req, res, next) => requestValidatior.deleteFile(req, res, next),
-        uploadFile: (headers, fileName) => requestValidatior.uploadFile(headers, fileName),
-        modifyFile: (fileProperties, fileName) => requestValidatior.modifyFile(fileProperties, fileName),
+        uploadFile: (req, res, next) => requestValidatior.uploadFile(req, res, next),
+        modifyFile: (req, res, next) => requestValidatior.modifyFile(req, res, next),
     }
 }

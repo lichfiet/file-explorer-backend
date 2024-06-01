@@ -6,7 +6,6 @@ const cors = require("cors");
 const dotenv = require("dotenv"); // for use of environment variables
 const multer = require("multer");
 const fs = require("fs");
-const https = require("https");
 const http = require("http");
 
 const config = dotenv.config(); // Prints Local Variables
@@ -21,6 +20,7 @@ const logger = require("./middlewares/logger.js"); // logging
  */
 const app = express();
 app.use(cors());
+app.use(express.json());
 
 const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
 logger.debug("Env Vars: " + JSON.stringify(config));
@@ -43,8 +43,8 @@ logger.info("Imported Utilities");
  * - /listFiles
  * - /uploadFile
  * - /deleteFile
- * - /copyFile // TO BE ADDED
  * - /renameFile // TO BE ADDED
+ * - /copyFile // TO BE ADDED
  *
  */
 
@@ -86,20 +86,20 @@ app.get("/getFile/:fileName", validationController.getFile, async (req, res) => 
   const getFile = async () => {
     const fileAsBuffer = await fileAccessMethodController.getFile(fileName, fileAccessConfig.ftp, method);
 
-    if (fileAsBuffer === null || fileAsBuffer === undefined) {
-      res.status(404).contentType("text/utf8").send("Error: File Not Found On Remote"); // send image
+    if (fileAsBuffer.status !== undefined) {
+      res.status(fileAsBuffer.status).send(fileAsBuffer.message);
     } else {
       res.status(200).contentType("image/*").attachment(fileName).send(fileAsBuffer); // send image
     }
   };
 
   try {
-    logger.debug(`Request for file: ${fileName} has been made, using ${method} method.`);
-    getFile();
+    logger.info(`Request for file: ${fileName} has been made, using ${method} method.`);
+    await getFile();
   } catch (err) {
     res.status(500).send(err);
   } finally {
-    logger.info(`File request completed.`);
+    logger.info(`Request for file: ${fileName} was completed.`);
   }
 });
 
@@ -130,23 +130,29 @@ app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
 /**
  * * /uploadFile to upload file to sftp or s3
  */
-app.post("/uploadFile", /** validationController.uploadFile ,*/ upload.single("fileUpload"), async (req, res) => {
+app.post("/uploadFile", upload.single("fileUpload"), validationController.uploadFile, async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   const method = req.headers.method;
   const fileName = req.file.originalname;
 
-  logger.info("Upload Initiated...");
+  logger.debug(`User (${"trevor"}) Made Request To Upload File: ${fileName} With Connection Method: ${method}`);
 
   const localFilePath = req.file.path;
   const fileData = fs.createReadStream(localFilePath);
 
   const uploadFile = async () => {
     const upload = await fileAccessMethodController.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
-    res.status(200).send(`${await upload}`);
+    
+    if (upload.status !== undefined) {
+      res.status(upload.status).send(upload.message);
+    } else {
+      res.status(200).send(upload);
+    } 
+
   };
 
   try {
-    logger.debug(`Request to upload file: ${fileName} has been made, using ${method} method.`);
+    logger.info(`Request to upload file: ${fileName} has been made, using ${method} method.`);
     await uploadFile();
   } catch (err) {
     res.status(500).send(err)
@@ -168,11 +174,12 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
   const deleteFile = async () => {
     const request = await fileAccessMethodController.deleteFile(fileName, fileAccessConfig.ftp, method)
     
-    if (request.status === 200) {
-      res.status(request.status).send(request.message);
-    } else if (request.status === 500) {
-      throw new Error(request.message);
-    }
+    // can't see if object exists before delete, succesful response should be good enough for now
+    if (request.status !== undefined) {
+      res.status(request.status).send(await request.message);
+    } else {
+      res.status(200).send(await request.message);
+    };
 
   };
 
@@ -185,6 +192,40 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
     logger.info(`File deletion request completed.`);
   }
 });
+
+
+/**
+ * * /renameFile to rename files
+ */
+app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  
+  const fileName = req.params.fileName;
+  const fileProperties = req.body.fileProperties;
+  const method = req.headers.method;
+  
+
+  const modifyFile = async () => {
+
+    const request = await fileAccessMethodController.modifyFile( fileProperties, fileName, fileAccessConfig.ftp, method);
+    res.status(200).send(await request.message);
+
+    // if (request.status === 200) {
+    //   res.status(request.status).send(request.message);
+    // } else if (request.status === 500) {
+    //   throw new Error(request.message);
+    // }
+  };
+
+  try {
+    logger.debug(`Request to modify file: ${fileName} with data ${JSON.stringify(fileProperties)} has been made, using ${method} method.`);
+    modifyFile();
+  } catch (err) {
+    logger.error(err);
+    res.status(500).send(err);
+  }
+});
+
 
 /**
  * * /health for healthchecks in the future
