@@ -19,12 +19,13 @@ class File {
 }
 
 const createFile = (name) => {
-	const type = name.search("/") === -1 ? "-" : "d";
-	const fileExtension =
-		type === "-" ? utils.extension.getFromFileName(name) : "Dir";
-	const extensionType =
-		type === "-" ? utils.extension.checkValid(fileExtension)[0] : "Dir";
-	const directory = '/'
+
+	const fileExtension = utils.extension.getFromFileName(name);
+	const extensionType = utils.extension.checkValid(fileExtension)[0];
+	
+	const type = extensionType != 3 ? "-" : "d";
+	const directory = '/';
+
 	return new File(name, type, fileExtension, extensionType, directory);
 };
 
@@ -47,12 +48,14 @@ const getFile = async (fileId, config) => {
 	// fileId will eventually be uuid generated on image pull, but right now it's just a file name
 	// uuid will be sent down as part of a separate uuid retrievel in a higher level function
 
+	const decodedFileId = decodeURIComponent(fileId);
+
     try {
         logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
         
         const requestInfo = {
             Bucket: "file-explorer-s3-bucket",
-            Key: fileId,
+            Key: decodedFileId,
         };
         
         const response = await s3Client.send(new GetObjectCommand(requestInfo));
@@ -135,8 +138,7 @@ const listFiles = async function (config) {
 		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
 		let files = [];
 
-		logger.debug("contents:")
-		logger.debug(response.Contents)
+		logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
 	
 		if (response.Contents === undefined) {
 			logger.debug("No Files Found");
@@ -146,7 +148,6 @@ const listFiles = async function (config) {
 				return createFile(file.Key);
 				;
 			});
-			logger.debug("Files Returned: " + files.length);
 		}
 	
 		return files;

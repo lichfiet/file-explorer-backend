@@ -1,4 +1,5 @@
 const parser = require('xml2json');
+const logger = require('../middlewares/logger');
 
 /**
  * Local Vars
@@ -6,19 +7,37 @@ const parser = require('xml2json');
 
 
 /* Extention Tools */
-const getExtentionFromFileName = (fileName) => { return (fileName.split('.').pop()) }
+const getExtentionFromFileName = (fileName) => {
+
+    const splitFileName = fileName.split('.');
+    const fileExtension = splitFileName[splitFileName.length - 1];
+
+    const directoryCheck = (fileName) => {
+        const lastChar = fileName[fileName.length - 1];
+        lastChar === '/' ? fileExtension = null : null;
+    };
+
+    directoryCheck(fileName);
+
+    return fileExtension
+};
 
 const extensionCheck = (fileExtension) => {
-    if (RegExp((/^(jpg|jpeg|png)$/i)).test(fileExtension) === true) {
-        return ([0, null, "JPG/JPEG/PNG"]) // unsure what other value to return
-    } else if (RegExp((/^(gif)$/i)).test(fileExtension) == true) {
-        return ([1, null, "GIF"]) // unsure what other value to return
-    } else if (RegExp((/^(mov|avi|mp4)$/i)).test(fileExtension) == true) {
-        return ([2, null, "MOV/AVI/MP4"]) // unsure what other value to return
-    } else {
-        return ([3, null, "Directory"])
-    };
-}
+
+    const checkExtension = (fileExtension) => {
+        if (RegExp((/^(jpg|jpeg|png)$/i)).test(fileExtension) === true) {
+            return ([0, null, "JPG/JPEG/PNG"]) // unsure what other value to return
+        } else if (RegExp((/^(gif)$/i)).test(fileExtension) == true) {
+            return ([1, null, "GIF"]) // unsure what other value to return
+        } else if (RegExp((/^(mov|avi|mp4)$/i)).test(fileExtension) == true) {
+            return ([2, null, "MOV/AVI/MP4"]) // unsure what other value to return
+        } else if (fileExtension === null) {
+            return ([3, null, "Directory"])
+        };
+    }
+
+    return checkExtension(fileExtension);
+};
 
 /* Data Tools */
 const xmlToJsonParser = (xml) => parser.toJson(xml)
