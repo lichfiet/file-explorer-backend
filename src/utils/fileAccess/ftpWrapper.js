@@ -6,6 +6,7 @@ const sftpClient = new SftpClient();
 const sftpConnect = (config) => sftpClient.connect(config);
 const sftpDisconnect = () => sftpClient.end();
 const logger = require("../../middlewares/logger");
+const { raw } = require("express");
 
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType) {
@@ -17,12 +18,15 @@ class File {
 }
 
 const createFile = (name) => {
-	const type = name.search("/") === -1 ? "-" : "d";
-	const fileExtension =
-		type === "-" ? utils.extension.getFromFileName(name) : "Dir";
-	const extensionType =
-		type === "-" ? utils.extension.checkValid(fileExtension)[0] : "Dir";
-	return new File(name, type, fileExtension, extensionType);
+
+	const fileExtension = utils.extension.getFromFileName(name);
+	logger.debug("File Extension: " + fileExtension);
+	const extensionType = utils.extension.checkValid(fileExtension)[0];
+	
+	const type = extensionType != 3 ? "-" : "d";
+	const directory = '/';
+
+	return new File(name, type, fileExtension, extensionType, directory);
 };
 
 
@@ -62,14 +66,13 @@ const listFiles = async function (config) {
 
 	logger.info("Sending the file list to client...");
 
-	const formattedContents = [];
-	for (var key in list) {
-		// format folders to have a / at the end of the name to work with createFile function
-		const name = list[key]["name"];
-		const formattedName = list[key]["type"] === "-" ? name : name + "/";
-		// Build array with item names
-		formattedContents.push(createFile(formattedName));
-	}
+	const formattedContents = await list.map(
+		(file) => { 
+			const rawFileName = file.name;
+			const fileName = file.type === 'd' ? rawFileName + '/' : rawFileName;
+
+			return createFile(fileName);
+		});
 
 	logger.info("Filed returned:, " + formattedContents.length); // Return console log of contents
 

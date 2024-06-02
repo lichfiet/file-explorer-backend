@@ -18,17 +18,6 @@ class File {
 	}
 }
 
-const createFile = (name) => {
-
-	const fileExtension = utils.extension.getFromFileName(name);
-	const extensionType = utils.extension.checkValid(fileExtension)[0];
-	
-	const type = extensionType != 3 ? "-" : "d";
-	const directory = '/';
-
-	return new File(name, type, fileExtension, extensionType, directory);
-};
-
 /**
  * Public Vars
  */
@@ -128,6 +117,18 @@ const uploadFile = async (fileData, fileName, config) => {
 };
 
 const listFiles = async function (config) {
+	const createFile = (name) => {
+
+		const fileExtension = utils.extension.getFromFileName(name);
+		const extensionType = utils.extension.checkValid(fileExtension)[0];
+		
+		const type = extensionType != 3 ? "-" : "d";
+		const directory = '/';
+	
+		return new File(name, type, fileExtension, extensionType, directory);
+	};
+
+
 	logger.debug("Requesting File List from S3 Bucket");
 
 	try {
@@ -138,12 +139,12 @@ const listFiles = async function (config) {
 		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
 		let files = [];
 
-		logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
-	
+		
 		if (response.Contents === undefined) {
 			logger.debug("No Files Found");
 			files = [new File("No Files", "d", "Dir", "Dir", '/')];
 		} else {
+			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
 			files = response.Contents.map((file) => {
 				return createFile(file.Key);
 				;
@@ -189,12 +190,158 @@ const modifyFile = async function (fileProperties, fileName, config, method) {
 	}
 };
 
+const createFolder = async function (folderName, config) {
+	logger.debug(`Creating Folder: ${folderName} in S3 Bucket`);
+
+	const decodedFolderName = decodeURIComponent(folderName);
+	const addTrailingSlash = decodedFolderName.endsWith('/') ? decodedFolderName : decodedFolderName + '/';
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: addTrailingSlash,
+			Body: ""
+		};
+
+		const response = await s3Client.send(new PutObjectCommand(requestInfo));
+		return (response.$metadata.httpStatusCode === 200) ? "Folder successfully created in S3 Bucket" : "Error creating folder in S3 Bucket";
+
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 Create Folder Request Completed");
+	}
+};
+
+const deleteFolder = async function (folderName, config) {
+	logger.debug(`Deleting Folder: ${folderName} in S3 Bucket`);
+
+	const decodedFolderName = decodeURIComponent(folderName);
+	const addTrailingSlash = decodedFolderName.endsWith('/') ? decodedFolderName : decodedFolderName + '/';
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: addTrailingSlash
+		};
+
+		const response = await s3Client.send(new DeleteObjectCommand(requestInfo));
+		return (response.$metadata.httpStatusCode === 200) ? "Folder successfully deleted from S3 Bucket" : "Error deleting folder from S3 Bucket";
+
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 Delete Folder Request Completed");
+	}
+};
+
+const listFilesInFolder = async function (folderName, config) {
+	const createFile = (name) => {
+
+		const fileExtension = utils.extension.getFromFileName(name);
+		const extensionType = utils.extension.checkValid(fileExtension)[0];
+		
+		const type = extensionType != 3 ? "-" : "d";
+		const directory = '/';
+	
+		return new File(name, type, fileExtension, extensionType, directory);
+	};
+
+	logger.debug(`Requesting File List from Folder: ${folderName} in S3 Bucket`);
+
+	const decodedFolderName = decodeURIComponent(folderName);
+	const addTrailingSlash = !decodedFolderName.endsWith('/') && decodedFolderName != '' ?  decodedFolderName + '/' : decodedFolderName;
+
+	try {
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Prefix: addTrailingSlash
+		};
+	
+		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
+		let files = [];
+
+		if (response.Contents === undefined) {
+			logger.debug("No Files Found");
+			files = [new File("No Files", "d", "Dir", "Dir", folderName)];
+		} else {
+			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
+			files = response.Contents.map((file) => {
+				return createFile(file.Key);
+				;
+			});
+		}
+
+		const createNestedObject = (files) => {
+			// Remove the trailing slash from folderName if it exists
+			const trimmedFolderName = folderName.endsWith('/') ? folderName.slice(0, -1) : folderName;
+		
+			const nestedObject = {
+				name: folderName,
+				children: []
+			};
+			
+			files.forEach((file) => {
+				// Exclude the trimmedFolderName from the fileName before splitting it into parts
+				let path = trimmedFolderName ? file.fileName.replace(trimmedFolderName + '/', '').split('/') : file.fileName.split('/');
+				path = path.filter((folder) => folder !== '');
+				let currentObject = nestedObject;
+			
+				// Determine the number of folders in the path
+				const numFolders = file.fileName.endsWith('/') ? path.length : path.length - 1;
+			
+				// Only iterate over the folders in the path, not the file name
+				for (let i = 0; i < numFolders; i++) {
+					let folder = path[i];
+					let folderObject = currentObject.children.find((child) => child.name === folder);
+					if (!folderObject) {
+						folderObject = {
+							name: folder,
+							type: 'd',
+							extension: 'Dir',
+							extensionType: 3,
+							directory: file.fileName,
+							children: []
+						};
+						currentObject.children.push(folderObject);
+					}
+					currentObject = folderObject;
+				}
+			
+				// Add the file to the children array of the last folder in the path
+				if (!file.fileName.endsWith('/')) {
+					currentObject.children.push({ 
+						name: path[path.length - 1], 
+						type: file.fileType, 
+						extension: file.fileExtension,
+						extensionType: file.fileExtensionType,
+						directory: file.fileName
+					});
+				}
+			});
+		
+			return nestedObject;
+		}
+
+		const nestedObject = createNestedObject(files);
+	
+		return nestedObject;
+	} catch (err) {
+		return handleErrors(err);
+	} finally {
+		logger.debug("S3 List Request Completed");
+	}
+};
+
 module.exports = {
 	s3: {
 		getFile,
 		uploadFile,
 		deleteFile,
 		listFiles,
-		modifyFile
+		modifyFile,
+		createFolder,
+		deleteFolder,
+		listFilesInFolder,
 	},
 };

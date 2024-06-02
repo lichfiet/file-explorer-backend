@@ -92,5 +92,42 @@ module.exports = {
 				// return await ftp.modifyFile(fileProperties, fileName, config);
 			}
 		},
+		/**
+		 * createFolder
+		 * 
+		 * @param {string} folderName 
+		 * @param {object} config 
+		 * @param {string} method 
+		 * @returns {string}
+		 */
+		createFolder: async (folderName, config, method) => {
+			if (method === "S3") {
+				return await s3.createFolder(folderName, config);
+			} else if (method === "SFTP") {
+				return 'Create Folder SFTP Not Implemented Yet. Request for folder ' + folderName + ' with config ' + JSON.stringify(config) + ' and method ' + method
+			}
+		},
+		/**
+		 * deleteFolder
+		 * 
+		 * @param {string} folderName 
+		 * @param {object} config 
+		 * @param {string} method 
+		 * @returns {string}
+		 */
+		deleteFolder: async (folderName, config, method) => {
+			if (method === "S3") {
+				return await s3.deleteFolder(folderName, config);
+			} else if (method === "SFTP") {
+				return 'Delete Folder SFTP Not Implemented Yet. Request for folder ' + folderName + ' with config ' + JSON.stringify(config) + ' and method ' + method
+			}
+		},
+		listFilesInFolder: async (folderName, config, method) => {
+			if (method === "S3") {
+				return await s3.listFilesInFolder(folderName, config);
+			} else if (method === "SFTP") {
+				return 'List Files In Folder SFTP Not Implemented Yet. Request for folder ' + folderName + ' with config ' + JSON.stringify(config) + ' and method ' + method
+			}
+		}
 	}
 };

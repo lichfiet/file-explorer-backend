@@ -10,11 +10,11 @@ const logger = require('../middlewares/logger');
 const getExtentionFromFileName = (fileName) => {
 
     const splitFileName = fileName.split('.');
-    const fileExtension = splitFileName[splitFileName.length - 1];
+    let fileExtension = splitFileName[splitFileName.length - 1];
 
     const directoryCheck = (fileName) => {
         const lastChar = fileName[fileName.length - 1];
-        lastChar === '/' ? fileExtension = null : null;
+        lastChar === '/' ? fileExtension = '/' : null;
     };
 
     directoryCheck(fileName);
@@ -31,8 +31,10 @@ const extensionCheck = (fileExtension) => {
             return ([1, null, "GIF"]) // unsure what other value to return
         } else if (RegExp((/^(mov|avi|mp4)$/i)).test(fileExtension) == true) {
             return ([2, null, "MOV/AVI/MP4"]) // unsure what other value to return
-        } else if (fileExtension === null) {
+        } else if (fileExtension === '/' || fileExtension === undefined) {
             return ([3, null, "Directory"])
+        } else {
+            return ([99, null, "N/A"])   
         };
     }
 

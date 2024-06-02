@@ -128,6 +128,32 @@ app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
 });
 
 /**
+ * * /listFilesDev to fetch file list
+ */
+app.get("/listFiles/*", validationController.listFiles, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  const method = req.headers["method"]; // Look for connection method in HTTP header
+  const directory = req.params[0]; // Combine the directory and any additional subdirectories
+
+  logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}, to folder: ${directory}`); // Log it
+
+  const getFileListInDirectory = async () => {
+    res.status(200).send(await fileAccessMethodController.listFilesInFolder(directory, fileAccessConfig.ftp, method)); // Pass the directory to the listFiles method
+  };
+
+  try {
+    logger.debug(`Request to list files has been made, using ${method} method.`);
+    getFileListInDirectory();
+  } catch (err) {
+    logger.error("Error Retrieving File List: " + err);
+    res.status(400).send("Error: " + err.message);
+  } finally {
+    logger.debug("File List Request Completed");
+  }
+});
+
+/**
  * * /uploadFile to upload file to sftp or s3
  */
 app.post("/uploadFile", upload.single("fileUpload"), validationController.uploadFile, async (req, res) => {
@@ -226,6 +252,45 @@ app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, re
   }
 });
 
+app.post("/createFolder/:folderName", validationController.createFolder, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  const folderName = req.params.folderName;
+  const method = req.headers.method;
+
+  const createFolder = async () => {
+    const request = await fileAccessMethodController.createFolder(folderName, fileAccessConfig.ftp, method);
+    res.status(200).send(await request.message);
+  };
+
+  try {
+    logger.debug(`Request to create folder: ${folderName} has been made, using ${method} method.`);
+    createFolder();
+  } catch (err) {
+    logger.error(err);
+    res.status(500).send(err);
+  }
+});
+
+app.delete("/deleteFolder/:folderName", validationController.deleteFolder, async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+
+  const folderName = req.params.folderName;
+  const method = req.headers.method;
+
+  const deleteFolder = async () => {
+    const request = await fileAccessMethodController.deleteFolder(folderName, fileAccessConfig.ftp, method);
+    res.status(200).send(await request.message);
+  };
+
+  try {
+    logger.debug(`Request to delete folder: ${folderName} has been made, using ${method} method.`);
+    deleteFolder();
+  } catch (err) {
+    logger.error(err);
+    res.status(500).send(err);
+  }
+});
 
 /**
  * * /health for healthchecks in the future
