@@ -1,12 +1,13 @@
+const logger = require("../../middlewares/logger");
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
+const { Readable } = require('stream');
+
 /**
  * Local Vars
  */
-const logger = require("../../middlewares/logger");
 
-const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
 const s3Client = new S3Client();
 
-const { Readable } = require('stream');
 
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType) {
@@ -34,32 +35,29 @@ const handleErrors = (err) => {
 };
 
 const getFile = async (fileId, config) => {
-	// fileId will eventually be uuid generated on image pull, but right now it's just a file name
-	// uuid will be sent down as part of a separate uuid retrievel in a higher level function
-
 	const decodedFileId = decodeURIComponent(fileId);
 
-    try {
-        logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
-        
-        const requestInfo = {
-            Bucket: "file-explorer-s3-bucket",
-            Key: decodedFileId,
-        };
-        
-        const response = await s3Client.send(new GetObjectCommand(requestInfo));
+	try {
+		logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
+		
+		const requestInfo = {
+			Bucket: "file-explorer-s3-bucket",
+			Key: decodedFileId,
+		};
+		
+		const response = await s3Client.send(new GetObjectCommand(requestInfo));
 
-        const chunks = [];
-        for await (const chunk of Readable.from(response.Body)) {
-            chunks.push(chunk);
-        }
-        return Buffer.concat(chunks);
+		const chunks = [];
+		for await (const chunk of Readable.from(response.Body)) {
+			chunks.push(chunk);
+		}
+		return Buffer.concat(chunks);
 
-    } catch (err) {
+	} catch (err) {
 		return handleErrors(err);
-    } finally {
-        logger.debug("S3 Get Request Completed");
-    }
+	} finally {
+		logger.debug("S3 Get Request Completed");
+	}
 };
 
 
@@ -77,7 +75,6 @@ const deleteFile = async (fileName, config) => {
 			ObjectAttributes: ["ObjectSize"],
 		};
 
-		// will replace with the deleteObjects for multi object delete, or maybe keep this for single object delete for concurrency
 		const fileExists = await s3Client.send(new GetObjectAttributesCommand(requestInfo2)).then((data) => {
 			return data.$metadata.httpStatusCode === 200
 		});
@@ -86,7 +83,6 @@ const deleteFile = async (fileName, config) => {
 
 		const response = await s3Client.send(new DeleteObjectCommand(requestInfo));
 	
-		
 		return (await response.$metadata.httpStatusCode === 204) ? { status: 200, message: "File successfully delete from S3 Bucket" } : handleErrors(response);
 
 	} catch (err) {
@@ -118,7 +114,6 @@ const uploadFile = async (fileData, fileName, config) => {
 
 const listFiles = async function (config) {
 	const createFile = (name) => {
-
 		const fileExtension = utils.extension.getFromFileName(name);
 		const extensionType = utils.extension.checkValid(fileExtension)[0];
 		
@@ -127,7 +122,6 @@ const listFiles = async function (config) {
 	
 		return new File(name, type, fileExtension, extensionType, directory);
 	};
-
 
 	logger.debug("Requesting File List from S3 Bucket");
 
@@ -139,7 +133,6 @@ const listFiles = async function (config) {
 		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
 		let files = [];
 
-		
 		if (response.Contents === undefined) {
 			logger.debug("No Files Found");
 			files = [new File("No Files", "d", "Dir", "Dir", '/')];
@@ -147,7 +140,6 @@ const listFiles = async function (config) {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
 			files = response.Contents.map((file) => {
 				return createFile(file.Key);
-				;
 			});
 		}
 	
@@ -159,10 +151,41 @@ const listFiles = async function (config) {
 	}
 };
 
+const createFolderInS3 = async function (key) {
+	const folders = key.split('/');
+	let currentPath = '';
 
-// need to re-write to handle errors better
-const modifyFile = async function (fileProperties, fileName, config, method) {
+	for (const folder of folders) {
+		if (folder) {
+			currentPath += folder + '/';
+			try {
+				const requestInfo = {
+					Bucket: "file-explorer-s3-bucket",
+					Key: currentPath,
+					Body: ""
+				};
+
+				const response = await s3Client.send(new PutObjectCommand(requestInfo));
+				if (response.$metadata.httpStatusCode !== 200) {
+					throw new Error("Error creating folder in S3 Bucket");
+				}
+			} catch (err) {
+				return handleErrors(err);
+			}
+		}
+	}
+};
+
+
+const modifyFile = async function (fileProperties, fileName) {
 	logger.debug("Modifying File in S3 Bucket");
+
+	const extractedPath = fileProperties.name.split('/');
+	const extractedFolderPath = extractedPath.slice(0, extractedPath.length - 1).join('/') + '/';
+
+	logger.error(`Extracted Path: ${extractedFolderPath}`);
+
+	await createFolderInS3(extractedFolderPath)
 
 	try {
 		requestInfo = {
@@ -194,26 +217,34 @@ const createFolder = async function (folderName, config) {
 	logger.debug(`Creating Folder: ${folderName} in S3 Bucket`);
 
 	const decodedFolderName = decodeURIComponent(folderName);
-	const addTrailingSlash = decodedFolderName.endsWith('/') ? decodedFolderName : decodedFolderName + '/';
+	const folders = decodedFolderName.split('/');
+	let currentPath = '';
 
-	try {
-		const requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
-			Key: addTrailingSlash,
-			Body: ""
-		};
+	for (const folder of folders) {
+		if (folder) {
+			currentPath += folder + '/';
+			try {
+				const requestInfo = {
+					Bucket: "file-explorer-s3-bucket",
+					Key: currentPath,
+					Body: ""
+				};
 
-		const response = await s3Client.send(new PutObjectCommand(requestInfo));
-		return (response.$metadata.httpStatusCode === 200) ? "Folder successfully created in S3 Bucket" : "Error creating folder in S3 Bucket";
-
-	} catch (err) {
-		return handleErrors(err);
-	} finally {
-		logger.debug("S3 Create Folder Request Completed");
+				const response = await s3Client.send(new PutObjectCommand(requestInfo));
+				if (response.$metadata.httpStatusCode !== 200) {
+					throw new Error("Error creating folder in S3 Bucket");
+				}
+			} catch (err) {
+				return handleErrors(err);
+			}
+		}
 	}
+
+	logger.debug("S3 Create Folder Request Completed");
+	return "Folder successfully created in S3 Bucket";
 };
 
-const deleteFolder = async function (folderName, config) {
+const deleteFolder = async function (folderName) {
 	logger.debug(`Deleting Folder: ${folderName} in S3 Bucket`);
 
 	const decodedFolderName = decodeURIComponent(folderName);
@@ -237,7 +268,6 @@ const deleteFolder = async function (folderName, config) {
 
 const listFilesInFolder = async function (folderName, config) {
 	const createFile = (name) => {
-
 		const fileExtension = utils.extension.getFromFileName(name);
 		const extensionType = utils.extension.checkValid(fileExtension)[0];
 		
@@ -268,12 +298,10 @@ const listFilesInFolder = async function (folderName, config) {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
 			files = response.Contents.map((file) => {
 				return createFile(file.Key);
-				;
 			});
 		}
 
 		const createNestedObject = (files) => {
-			// Remove the trailing slash from folderName if it exists
 			const trimmedFolderName = folderName.endsWith('/') ? folderName.slice(0, -1) : folderName;
 		
 			const nestedObject = {
@@ -282,15 +310,12 @@ const listFilesInFolder = async function (folderName, config) {
 			};
 			
 			files.forEach((file) => {
-				// Exclude the trimmedFolderName from the fileName before splitting it into parts
 				let path = trimmedFolderName ? file.fileName.replace(trimmedFolderName + '/', '').split('/') : file.fileName.split('/');
 				path = path.filter((folder) => folder !== '');
 				let currentObject = nestedObject;
 			
-				// Determine the number of folders in the path
 				const numFolders = file.fileName.endsWith('/') ? path.length : path.length - 1;
 			
-				// Only iterate over the folders in the path, not the file name
 				for (let i = 0; i < numFolders; i++) {
 					let folder = path[i];
 					let folderObject = currentObject.children.find((child) => child.name === folder);
@@ -301,6 +326,7 @@ const listFilesInFolder = async function (folderName, config) {
 							extension: 'Dir',
 							extensionType: 3,
 							directory: file.fileName,
+							isOpen: false,
 							children: []
 						};
 						currentObject.children.push(folderObject);
@@ -308,7 +334,6 @@ const listFilesInFolder = async function (folderName, config) {
 					currentObject = folderObject;
 				}
 			
-				// Add the file to the children array of the last folder in the path
 				if (!file.fileName.endsWith('/')) {
 					currentObject.children.push({ 
 						name: path[path.length - 1], 
