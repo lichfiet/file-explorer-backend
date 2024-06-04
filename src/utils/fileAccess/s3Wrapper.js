@@ -135,7 +135,6 @@ const listFiles = async function (config) {
 
 		if (response.Contents === undefined) {
 			logger.debug("No Files Found");
-			files = [new File("No Files", "d", "Dir", "Dir", '/')];
 		} else {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
 			files = response.Contents.map((file) => {
@@ -292,8 +291,7 @@ const listFilesInFolder = async function (folderName, config) {
 		let files = [];
 
 		if (response.Contents === undefined) {
-			logger.debug("No Files Found");
-			files = [new File("No Files", "d", "Dir", "Dir", folderName)];
+			logger.debug("No Files Found In: " + folderName);
 		} else {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map( (file) => file.Key ))}`);
 			files = response.Contents.map((file) => {
@@ -305,8 +303,12 @@ const listFilesInFolder = async function (folderName, config) {
 			const trimmedFolderName = folderName.endsWith('/') ? folderName.slice(0, -1) : folderName;
 		
 			const nestedObject = {
-				name: folderName,
-				children: []
+				name: folderName === '' ? 'root' : trimmedFolderName.split('/').pop(),
+				type: 'd',
+				extension: 'Dir',
+				extensionType: 3,
+				directory: '',
+				children: [],
 			};
 			
 			files.forEach((file) => {
@@ -321,12 +323,13 @@ const listFilesInFolder = async function (folderName, config) {
 					let folderObject = currentObject.children.find((child) => child.name === folder);
 					if (!folderObject) {
 						folderObject = {
+							isOpen: false,
 							name: folder,
 							type: 'd',
 							extension: 'Dir',
 							extensionType: 3,
 							directory: file.fileName,
-							isOpen: false,
+							parentDir: currentObject.directory,
 							children: []
 						};
 						currentObject.children.push(folderObject);
@@ -340,6 +343,7 @@ const listFilesInFolder = async function (folderName, config) {
 						type: file.fileType, 
 						extension: file.fileExtension,
 						extensionType: file.fileExtensionType,
+						parentDir: currentObject.directory,
 						directory: file.fileName
 					});
 				}
