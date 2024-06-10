@@ -19,6 +19,8 @@ class File {
 	}
 }
 
+
+
 /**
  * Public Vars
  */
@@ -65,25 +67,22 @@ const deleteFile = async (fileName, config) => {
 	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
 
 	try {
-		const requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
-			Key: fileName
-		};
-		const requestInfo2 = {
-			Bucket: "file-explorer-s3-bucket",
-			Key: fileName,
-			ObjectAttributes: ["ObjectSize"],
-		};
-
-		const fileExists = await s3Client.send(new GetObjectAttributesCommand(requestInfo2)).then((data) => {
-			return data.$metadata.httpStatusCode === 200
-		});
-
+		const fileExistsReqParams = { Bucket: "file-explorer-s3-bucket", Key: fileName, ObjectAttributes: ["ObjectSize"] };
+		const fileExists = await s3Client.send(new GetObjectAttributesCommand(fileExistsReqParams)).then(
+			(reponse) => { return (reponse.$metadata.httpStatusCode === 200 ? true : false ) } // checks s3 object exists
+		);
+		
 		logger.debug(`File Exists: ${await fileExists}`);
+			
+		const deleteFile = async () => {
+			const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileName };
+			const req = await s3Client.send(new DeleteObjectCommand(reqParams));
+			const responseCode = await req.$metadata.httpStatusCode;
 
-		const response = await s3Client.send(new DeleteObjectCommand(requestInfo));
-	
-		return (await response.$metadata.httpStatusCode === 204) ? { status: 200, message: "File successfully delete from S3 Bucket" } : handleErrors(response);
+			return (responseCode === 204 ? { status: 200, message: "File successfully delete from S3 Bucket" } : () => {throw new Error("Error deleting file from S3 Bucket")} );
+		} 
+
+		return await deleteFile();
 
 	} catch (err) {
 		return handleErrors(err);
@@ -323,14 +322,14 @@ const listFilesInFolder = async function (folderName, config) {
 					let folderObject = currentObject.children.find((child) => child.name === folder);
 					if (!folderObject) {
 						folderObject = {
-							isOpen: false,
 							name: folder,
+							isOpen: currentObject.children.length !== 0 ? true : false,
 							type: 'd',
 							extension: 'Dir',
 							extensionType: 3,
 							directory: file.fileName,
 							parentDir: currentObject.directory,
-							children: []
+							children: [],
 						};
 						currentObject.children.push(folderObject);
 					}
