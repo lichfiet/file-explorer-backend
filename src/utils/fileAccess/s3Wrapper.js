@@ -1,5 +1,6 @@
-const logger = require("../../middlewares/logger");
+const logger = require("../logger");
 const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
+const { get } = require("http");
 const { Readable } = require('stream');
 
 /**
@@ -31,34 +32,38 @@ const handleErrors = (err) => {
 	const rawStatus = err.$metadata.httpStatusCode;
 	const rawMessage = 'Unable To Fulfill Request: ' + err.message;
 	const status = rawStatus === undefined ? 500 : rawStatus;
-	const message = rawMessage === undefined ? "Error Occurred Requesting File From Bucket" : rawMessage;
+	const message = rawMessage === undefined ? "Error Occurred Handling File Request to/from Bucket" : rawMessage;
 
 	return { status: status, message: message };
 };
 
 const getFile = async (fileId, config) => {
+	logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
+
 	const decodedFileId = decodeURIComponent(fileId);
 
-	try {
-		logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
+	const getFile = async (fileId, config) => {
+		const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileId };
+		const response = await s3Client.send(new GetObjectCommand(reqParams));
 		
-		const requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
-			Key: decodedFileId,
+		const reponseToStream = Readable.from(response.Body);
+		const concatStream = async (stream) => {
+			const chunks = [];
+			for await (const chunk of stream) {
+				chunks.push(chunk);
+			}
+			return Buffer.concat(chunks);
 		};
-		
-		const response = await s3Client.send(new GetObjectCommand(requestInfo));
+		return concatStream(reponseToStream);
+	};
 
-		const chunks = [];
-		for await (const chunk of Readable.from(response.Body)) {
-			chunks.push(chunk);
-		}
-		return Buffer.concat(chunks);
 
+	try {
+		return getFile(decodedFileId, config);
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		logger.debug("S3 Get Request Completed");
+		logger.debug(`S3 Get for Filename: ${fileId} Completed`);
 	}
 };
 
@@ -94,16 +99,18 @@ const deleteFile = async (fileName, config) => {
 const uploadFile = async (fileData, fileName, config) => {
 	logger.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
 
+	const encodedFileName = encodeURI(fileName);
+	
+	const uploadFile = async (fileData, encodedFileName) => {
+		const requestParams = { Bucket: "file-explorer-s3-bucket", Key: encodedFileName, Body: fileData };
+		const response = await s3Client.send(new PutObjectCommand(requestParams));
+		const responseCode = await response.$metadata.httpStatusCode;
+
+		return (await responseCode === 200) ? "File successfully uploaded to S3 Bucket" : () => {throw new Error("Error deleting file from S3 Bucket")};
+	}
+
 	try {
-		const requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
-			Key: fileName,
-			Body: fileData
-		};
-
-		const response = await s3Client.send(new PutObjectCommand(requestInfo));
-		return (response.$metadata.httpStatusCode === 200) ? "File successfully uploaded to S3 Bucket" : "Error uploading file to S3 Bucket";
-
+		return uploadFile(fileData, encodedFileName);
 	} catch (err) {
 		return handleErrors(err);
 	} finally {

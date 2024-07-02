@@ -1,4 +1,5 @@
 const { Sequelize, DataTypes } = require("sequelize");
+import { logger } from "./logger.js";
 
 const pgConnector = new Sequelize("postgres", "postgres", "password", {
 	database: process.env.PG_DATABASE,

@@ -1,7 +1,7 @@
 /**
  * App Packages
  */
-const logger = require("../../middlewares/logger.js");
+const logger = require("../logger.js");
 
 /**
  * File Access Methods

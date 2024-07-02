@@ -1,5 +1,5 @@
 const parser = require('xml2json');
-const logger = require('../middlewares/logger');
+const logger = require('./logger.js');
 
 /**
  * Local Vars

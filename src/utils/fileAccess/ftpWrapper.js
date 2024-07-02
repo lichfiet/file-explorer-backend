@@ -5,7 +5,7 @@ const SftpClient = require("ssh2-sftp-client");
 const sftpClient = new SftpClient();
 const sftpConnect = (config) => sftpClient.connect(config);
 const sftpDisconnect = () => sftpClient.end();
-const logger = require("../../middlewares/logger");
+const logger = require("../logger");
 const { raw } = require("express");
 
 class File {

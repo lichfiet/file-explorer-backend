@@ -1,29 +1,61 @@
 /**
+ ** Observability
+ */
+const logger = require("./utils/logger.js"); // logging
+
+/**
+ * * Environment Variables
+*/
+const dotenv = require("dotenv"); // for use of environment variables
+const config = dotenv.config(); // Prints Local Variables
+logger.debug(`Printing Env Vars: `);
+
+function logKeys() {
+  const vars = {
+    port: config.parsed.PORT,
+    logLevel: config.parsed.LOG_LEVEL, 
+    awsRegion: config.parsed.AWS_REGION,
+    pgDatabase: config.parsed.PG_DATABASE,
+    pgHost: config.parsed.PG_HOST
+  };
+
+  for (let key in vars) {
+    logger.debug(`${key}: ${vars[key]}`);
+  }
+};
+
+logKeys();
+
+
+/**
  ** App Packages
  */
 const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv"); // for use of environment variables
-const multer = require("multer");
 const fs = require("fs");
 const http = require("http");
 
-const config = dotenv.config(); // Prints Local Variables
 
 /**
- * * Observability
- */
-const logger = require("./middlewares/logger.js"); // logging
-
-/**
- ** App Setup
+ ** Express Setup & Middleware
  */
 const app = express();
-app.use(cors());
-app.use(express.json());
 
+
+const cors = require("cors"); // Cross Origin Resource Sharing
+const traceMiddleware = require("./middlewares/traceMiddleware.js"); // Distributed Tracing
+const loggerMiddleware = require("./middlewares/loggingMiddleware.js"); // Request Logging
+const { validationMiddleware } = require("./middlewares/reqValidationMiddleware.js"); // Request Validation
+const multer = require("multer"); // File Uploads
 const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
-logger.debug("Env Vars: " + JSON.stringify(config));
+
+app.use(express.json());
+app.use(cors());
+app.use(traceMiddleware);
+app.use(validationMiddleware);
+app.use(loggerMiddleware);
+
+
+
 //const dbController = require("./utils/db.js"); // test
 //dbController.connect(); // connect to sql DB
 //dbController.refreshModels();
@@ -32,7 +64,7 @@ logger.debug("Env Vars: " + JSON.stringify(config));
  * *Import Utilities
  */
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
-const { validationController } = require("./middlewares/validation.js"); // For request validation
+const { validationController } = require("./middlewares/reqValidationMiddleware.js"); // For request validation
 logger.info("Imported Utilities");
 
 /**
@@ -62,7 +94,6 @@ const fileAccessConfig = {
   },
 };
 
-logger.info("Starting server....");
 
 /**
  * Static Index Page
@@ -76,9 +107,8 @@ app.get("/", (req, res) => {
  *
  * currently just takes /getFile/{fileName} argument in the URL,
  */
-app.get("/getFile/:fileName", validationController.getFile, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
+app.get("/getFile/:fileName", async (req, res) => {
+  
   const method = req.headers.method;
   const fileName = req.params.fileName;
 
@@ -94,12 +124,10 @@ app.get("/getFile/:fileName", validationController.getFile, async (req, res) => 
   };
 
   try {
-    logger.info(`Request for file: ${fileName} has been made, using ${method} method.`);
     await getFile();
   } catch (err) {
     res.status(500).send(err);
   } finally {
-    logger.info(`Request for file: ${fileName} was completed.`);
   }
 });
 
@@ -107,7 +135,7 @@ app.get("/getFile/:fileName", validationController.getFile, async (req, res) => 
  * * /listFilesDev to fetch file list
  */
 app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  
 
   const method = req.headers["method"]; // Look for connection method in HTTP header
   logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}`); // Log it
@@ -117,47 +145,38 @@ app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
   };
 
   try {
-    logger.debug(`Request to list files has been made, using ${method} method.`);
     getFileList();
   } catch (err) {
     logger.error("Error Retrieving File List: " + err);
     res.status(400).send("Error: " + err.message);
-  } finally {
-    logger.debug("File List Request Completed");
   }
 });
 
 /**
  * * /listFilesDev to fetch file list
  */
-app.get("/listFiles/*", validationController.listFiles, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
+app.get("/listFiles/*", async (req, res) => {
+  
   const method = req.headers["method"]; // Look for connection method in HTTP header
   const directory = req.params[0]; // Combine the directory and any additional subdirectories
-
-  logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}, to folder: ${directory}`); // Log it
 
   const getFileListInDirectory = async () => {
     res.status(200).send(await fileAccessMethodController.listFilesInFolder(directory, fileAccessConfig.ftp, method)); // Pass the directory to the listFiles method
   };
 
   try {
-    logger.debug(`Request to list files has been made, using ${method} method.`);
     getFileListInDirectory();
   } catch (err) {
     logger.error("Error Retrieving File List: " + err);
     res.status(400).send("Error: " + err.message);
-  } finally {
-    logger.debug("File List Request Completed");
   }
 });
 
 /**
  * * /uploadFile to upload file to sftp or s3
  */
-app.post("/uploadFile", upload.single("fileUpload"), validationController.uploadFile, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
+  
   const method = req.headers.method;
   const fileName = req.file.originalname;
 
@@ -178,13 +197,11 @@ app.post("/uploadFile", upload.single("fileUpload"), validationController.upload
   };
 
   try {
-    logger.info(`Request to upload file: ${fileName} has been made, using ${method} method.`);
     await uploadFile();
   } catch (err) {
     res.status(500).send(err)
   } finally {
     fs.unlinkSync(req.file.path);
-    logger.info(`File upload request completed.`);
   }
 });
 
@@ -192,7 +209,7 @@ app.post("/uploadFile", upload.single("fileUpload"), validationController.upload
  * * /deleteFile to delete files
  */
 app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  
 
   const fileName = req.params.fileName;
   const method = req.headers.method;
@@ -210,7 +227,6 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
   };
 
   try {
-    logger.debug(`Request to delete file: ${fileName} has been made, using ${method} method.`);
     deleteFile();
   } catch (err) {
     res.status(500).send(err);
@@ -224,7 +240,7 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
  * * /renameFile to rename files
  */
 app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  
   
   const fileName = req.params.fileName;
   const fileProperties = req.body.fileProperties;
@@ -244,7 +260,6 @@ app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, re
   };
 
   try {
-    logger.debug(`Request to modify file: ${fileName} with data ${JSON.stringify(fileProperties)} has been made, using ${method} method.`);
     modifyFile();
   } catch (err) {
     logger.error(err);
@@ -252,9 +267,8 @@ app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, re
   }
 });
 
-app.post("/createFolder/:folderName", validationController.createFolder, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-
+app.post("/createFolder/:folderName", async (req, res) => {
+  
   const folderName = req.params.folderName;
   const method = req.headers.method;
 
@@ -264,7 +278,6 @@ app.post("/createFolder/:folderName", validationController.createFolder, async (
   };
 
   try {
-    logger.debug(`Request to create folder: ${folderName} has been made, using ${method} method.`);
     createFolder();
   } catch (err) {
     logger.error(err);
@@ -272,8 +285,7 @@ app.post("/createFolder/:folderName", validationController.createFolder, async (
   }
 });
 
-app.delete("/deleteFolder/:folderName", validationController.deleteFolder, async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+app.delete("/deleteFolder/:folderName", async (req, res) => {
 
   const folderName = req.params.folderName;
   const method = req.headers.method;
@@ -284,8 +296,7 @@ app.delete("/deleteFolder/:folderName", validationController.deleteFolder, async
   };
 
   try {
-    logger.debug(`Request to delete folder: ${folderName} has been made, using ${method} method.`);
-    deleteFolder();
+     deleteFolder();
   } catch (err) {
     logger.error(err);
     res.status(500).send(err);
@@ -304,8 +315,8 @@ process.on('uncaughtException', function (err) {
 });
 
 // START SERVER
+logger.info("Starting server....");
 const httpServer = http.createServer(app);
-const PORT = process.env.PORT;
-httpServer.listen(PORT, () => {
-  logger.info(`Server is running on port ${PORT}`);
+httpServer.listen(process.env.PORT, () => {
+  logger.info(`Server is running on port ${process.env.PORT}`);
 });
