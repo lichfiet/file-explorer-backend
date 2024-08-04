@@ -135,7 +135,7 @@ app.get("/getFile/:fileName", async (req, res) => {
 /**
  * * /listFilesDev to fetch file list
  */
-app.get("/listFilesDev", validationController.listFiles, async (req, res) => {
+app.get("/listFilesDev", async (req, res) => {
   
 
   const method = req.headers["method"]; // Look for connection method in HTTP header
@@ -209,7 +209,7 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
 /**
  * * /deleteFile to delete files
  */
-app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req, res) => {
+app.delete("/deleteFile/:fileName", async (req, res) => {
   
 
   const fileName = req.params.fileName;
