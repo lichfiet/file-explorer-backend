@@ -17,7 +17,7 @@ console.debug = function(message) {
 };
 
 module.exports = logger = pino({
-  level: `${process.env.LOG_LEVEL}` || `info`, // log level for development
+  level: `${(process.env.LOG_LEVEL).toLowerCase()}` || 'info', // log level for development
   transport: {
     target: 'pino-pretty'
   }

@@ -1,15 +1,28 @@
 FROM node:18-alpine as base
 WORKDIR /usr/app/
 
-# install dependencies into temp directory
-# this will cache them and speed up future builds
+### ENVIRONMENT VARIABLES #################
+# Server Config
+ENV PORT=8443
+ENV LOG_LEVEL="DEBUG" 
+ENV APP_NAME="file-explorer-backend"
+
+# AWS S3 Configuration
+ENV AWS_REGION="us-west-1"
+ENV AWS_ACCESS_KEY_ID="NO_ACCESS_KEY_DEFINED"
+ENV AWS_SECRET_ACCESS_KEY="NO_SECRET_KEY_DEFINED"
+#############################################
+
+
+### INSTALL BASE DEPENDENCIES
 FROM base AS install
 
-# Install make and python3 for node-gyp
+# Install make and python3 for node-gyp dependency
 RUN apk update
 RUN apk add gcc g++ python3 make 
 
 ## NODE MODULES
+
 # Install Dev Node Modules
 RUN mkdir -p /var/dev
 COPY package.json package-lock.json /var/dev/
@@ -29,7 +42,25 @@ COPY ./ /usr/app/
 
 # run the app
 EXPOSE 8443/tcp
+RUN printenv
 CMD npm run dev
+
+##
+## Staging Build
+## - copy production dependencies and source code into final image
+##
+FROM base AS stage
+
+ENV LOG_LEVEL="DEBUG"
+
+COPY --from=install /var/prod/node_modules node_modules
+COPY --from=dev /usr/app/src/ ./src/ 
+COPY --from=dev /usr/app/package.json package.json
+
+# run the app
+EXPOSE 8443/tcp
+RUN printenv
+CMD npm run stage
 
 ##
 ## Production Build

@@ -1,3 +1,6 @@
+const dotenv = require("dotenv"); // for use of environment variables
+const config = dotenv.config(); // Prints Local Variables
+
 /**
  ** Observability
  */
@@ -6,8 +9,6 @@ const logger = require("./utils/logger.js"); // logging
 /**
  * * Environment Variables
 */
-const dotenv = require("dotenv"); // for use of environment variables
-const config = dotenv.config(); // Prints Local Variables
 logger.debug(`Printing Env Vars: `);
 
 function logKeys() {
@@ -20,7 +21,7 @@ function logKeys() {
   };
 
   for (let key in vars) {
-    logger.debug(`${key}: ${vars[key]}`);
+    logger.info(`${key}: ${vars[key]}`);
   }
 };
 
@@ -239,7 +240,7 @@ app.delete("/deleteFile/:fileName", validationController.deleteFile, async (req,
 /**
  * * /renameFile to rename files
  */
-app.put("/modifyFile/:fileName", validationController.modifyFile, async (req, res) => {
+app.put("/modifyFile/:fileName", async (req, res) => {
   
   
   const fileName = req.params.fileName;

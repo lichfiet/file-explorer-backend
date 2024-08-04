@@ -22,8 +22,13 @@ help: ## This help.
 .DEFAULT_GOAL := help
 
 
-# DOCKER TASKS
-# Build the container
+############################################################################################################
+## DOCKER TASKS
+
+
+## DEVELOPMENT
+##################
+
 build: ## Build the container
 	@echo "\n...Building Backend Container Image... \n"
 	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=dev
@@ -34,13 +39,23 @@ build-nc: ## Build the container with no cache
 
 run: ## Run container on port configured in `config.env`
 	@echo "\n...Launching Dev Server... \n"
-	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) $(APP_NAME):dev
+	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) -env=LOG_LEVEL=DEBUG $(APP_NAME):dev 
 	@echo "\nHold ctrl and click this link 'http://localhost:${PORT}'\n"
 
 run-d: ## Run container on port configured in `config.env` in detached mode
 	@echo "\n...Launching Dev Server... \n"
 	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) -d $(APP_NAME):dev
 	@echo "\nHold ctrl and click this link 'http://localhost:${PORT}'\n"
+
+
+## STAGE TESTING
+##################
+
+run-stage: ## Run container on port configured in `config.env`
+	@echo "\n...Launching Dev Server... \n"
+	docker run -it --rm -p $(PORT):$(PORT) --name $(APP_NAME) -e PORT=8443 -e LOG_LEVEL="DEBUG" $(APP_NAME):dev 
+	@echo "\nHold ctrl and click this link 'http://localhost:${PORT}'\n"
+
 
 stop: ## Stop the running container
 	@echo "\n...Stopping Docker Container... \n"
@@ -64,26 +79,23 @@ start-d: ## WIP Docker compose in detached mode
 	@echo "\nHold ctrl and click this link 'http://localhost:8000'\n"
 
 
-# Clean Up
+
+##################
+## MISC
+##################
+
+## INITIALIZATION
+init: # Initailize development environment and start it
+	chmod u+x ./development/dev-init.sh
+	./development/dev-init.sh
+	@echo "\nDevelopment Environment Successfully Initialied"
+	@echo "\nType 'make help' for a list of commands\n"
+
+## CLEANUP
 clean: # Remove images, modules, and cached build layers
 	rm -rf node_modules
 	-docker stop ${APP_NAME}
 	-docker rm ${APP_NAME}
 	-docker image rm ${APP_NAME}:dev
+	-docker image rm ${APP_NAME}:stage
 	-docker image rm ${APP_NAME}:latest
-
-init: # Initailize development environment and start it
-	chmod u+x ./development/dev-init.sh
-	./development/dev-init.sh
-	@echo "\n...Building Web Container Image... \n"
-	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=dev
-	@echo "\n...Development Environment Successfully Initialied... \n"
-	@echo "\nType 'make help' for a list of commands\n"
-
-build-prod: ## Build for production
-	chmod u+x ./development/dev-init.sh
-	./development/dev-init.sh
-	@echo "\n...Building Web Container Image... \n"
-	export $(grep -v '^#' .env | xargs)
-	docker build -t $(APP_NAME):latest --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=prod
-	@echo "\n...Built Backend... \n"
