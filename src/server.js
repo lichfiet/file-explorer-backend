@@ -221,7 +221,6 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
  */
 app.put("/modifyFile/:fileName", async (req, res) => {
   
-  
   const fileName = req.params.fileName;
   const fileProperties = req.body.fileProperties;
   const method = req.headers.method;

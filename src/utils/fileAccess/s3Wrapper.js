@@ -74,32 +74,47 @@ const deleteFile = async (fileName, config) => {
 	try {
 		const fileExistsReqParams = { Bucket: "file-explorer-s3-bucket", Key: fileName, ObjectAttributes: ["ObjectSize"] };
 		const fileExists = await s3Client.send(new GetObjectAttributesCommand(fileExistsReqParams)).then(
-			(reponse) => { return (reponse.$metadata.httpStatusCode === 200 ? true : false ) } // checks s3 object exists
+			(response) => { return (response.$metadata.httpStatusCode === 200 ? true : false ) } // checks s3 object exists
 		);
 		
 		logger.debug(`File Exists: ${await fileExists}`);
 			
-		const deleteFile = async () => {
-			const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileName };
-			const req = await s3Client.send(new DeleteObjectCommand(reqParams));
-			const responseCode = await req.$metadata.httpStatusCode;
+		const deleteFile = async (fileKey) => {
+			const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileKey };
+			await s3Client.send(new DeleteObjectCommand(reqParams));
+		};
 
-			return (responseCode === 204 ? { status: 200, message: "File successfully delete from S3 Bucket" } : () => {throw new Error("Error deleting file from S3 Bucket")} );
-		} 
+		const listFilesRecursive = async (prefix) => {
+			const reqParams = { Bucket: "file-explorer-s3-bucket", Prefix: prefix };
+			const response = await s3Client.send(new ListObjectsCommand(reqParams));
+			const files = response.Contents || [];
 
-		return await deleteFile();
+			for (const file of files) {
+				await deleteFile(file.Key);
+			}
+
+			const prefixes = response.CommonPrefixes || [];
+
+			for (const prefix of prefixes) {
+				await listFilesRecursive(prefix.Prefix);
+			}
+		};
+
+		await listFilesRecursive(fileName);
+
+		return { status: 200, message: "All files successfully deleted from S3 Bucket" };
 
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
 		logger.debug(`S3 Delete for Filename: ${fileName} Completed`);
 	}
-}
+};
 
 const uploadFile = async (fileData, fileName, config) => {
 	logger.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
 
-	const encodedFileName = encodeURI(fileName);
+	const encodedFileName = decodeURI(fileName);
 	
 	const uploadFile = async (fileData, encodedFileName) => {
 		const requestParams = { Bucket: "file-explorer-s3-bucket", Key: encodedFileName, Body: fileData };
@@ -183,6 +198,7 @@ const createFolderInS3 = async function (key) {
 
 
 const modifyFile = async function (fileProperties, fileName) {
+	console.log(fileName)
 	logger.debug("Modifying File in S3 Bucket");
 
 	const extractedPath = fileProperties.name.split('/');
