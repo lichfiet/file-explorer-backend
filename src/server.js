@@ -135,27 +135,6 @@ app.get("/getFile/:fileName", async (req, res) => {
 /**
  * * /listFilesDev to fetch file list
  */
-app.get("/listFilesDev", async (req, res) => {
-  
-
-  const method = req.headers["method"]; // Look for connection method in HTTP header
-  logger.debug(`User (${"trevor"}) Made Request For File List With Connection Method: ${method}`); // Log it
-
-  const getFileList = async () => {
-    res.status(200).send(await fileAccessMethodController.listFiles(fileAccessConfig.ftp, method));
-  };
-
-  try {
-    getFileList();
-  } catch (err) {
-    logger.error("Error Retrieving File List: " + err);
-    res.status(400).send("Error: " + err.message);
-  }
-});
-
-/**
- * * /listFilesDev to fetch file list
- */
 app.get("/listFiles/*", async (req, res) => {
   
   const method = req.headers["method"]; // Look for connection method in HTTP header
@@ -308,6 +287,7 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
  * * /health for healthchecks in the future
  */
 app.get("/health", async (req, res) => {
+  console.log(req);
   res.status(200).send("Server Running");
 });
 
