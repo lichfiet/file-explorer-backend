@@ -208,23 +208,28 @@ const modifyFile = async function (fileProperties, fileName) {
 	await createFolderInS3(extractedFolderPath)
 
 	try {
-		requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
-			CopySource: "file-explorer-s3-bucket/" + fileName,
-			Key: fileProperties.name
-		};
+		if (fileName.endsWith('/')) {
+			const listFilesReqParams = { Bucket: "file-explorer-s3-bucket", Prefix: fileName };
+			const response = await s3Client.send(new ListObjectsCommand(listFilesReqParams));
+			const files = response.Contents || [];
 
-		const response = await s3Client.send(new CopyObjectCommand(requestInfo)).then(async (data) => {
-			if (data.$metadata.httpStatusCode === 200) {
-				s3Client.send(new DeleteObjectCommand({ Bucket: requestInfo.Bucket, Key: fileName }))
-			} else {
-				throw new Error("Error Copying File" + err)
+			for (const file of files) {
+				const newFileName = extractedFolderPath + file.Key.substring(fileName.length);
+				const copyReqParams = { Bucket: "file-explorer-s3-bucket", CopySource: "file-explorer-s3-bucket/" + file.Key, Key: newFileName };
+				await s3Client.send(new CopyObjectCommand(copyReqParams));
+				await s3Client.send(new DeleteObjectCommand({ Bucket: "file-explorer-s3-bucket", Key: file.Key }));
 			}
+		} else {
+			const copyReqParams = { Bucket: "file-explorer-s3-bucket", CopySource: "file-explorer-s3-bucket/" + fileName, Key: fileProperties.name };
+			const response = await s3Client.send(new CopyObjectCommand(copyReqParams));
+			if (response.$metadata.httpStatusCode === 200) {
+				await s3Client.send(new DeleteObjectCommand({ Bucket: "file-explorer-s3-bucket", Key: fileName }));
+			} else {
+				throw new Error("Error Copying File");
+			}
+		}
 
-			return data
-		});
-
-		return (response.$metadata.httpStatusCode === 200) ? { status: 200, message: "File successfully modified in S3 Bucket" } : "Error modifying file in S3 Bucket";
+		return { status: 200, message: "File successfully modified in S3 Bucket" };
 
 	} catch (err) {
 		return handleErrors(err);
