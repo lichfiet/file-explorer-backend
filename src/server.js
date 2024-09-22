@@ -290,6 +290,13 @@ app.get("/health", async (req, res) => {
   res.status(200).send("Server Running");
 });
 
+app.get("/test", async (req, res) => {
+  const rabbit = require("./utils/rabbit.js");
+
+  await rabbit.initialize();
+  res.status(200).send("Test");
+});
+
 process.on('uncaughtException', function (err) {
   logger.error(err);
 });
