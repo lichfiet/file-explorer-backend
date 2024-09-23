@@ -66,6 +66,7 @@ app.use(loggerMiddleware);
  */
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
 const { validationController } = require("./middlewares/reqValidationMiddleware.js"); // For request validation
+const errorHandler = require("./middlewares/error.js"); // error handling
 logger.info("Imported Utilities");
 
 /**
@@ -219,7 +220,7 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
 /**
  * * /renameFile to rename files
  */
-app.put("/modifyFile/:fileName", async (req, res) => {
+app.put("/modifyFile/:fileName", async (req, res, next) => {
   
   const fileName = req.params.fileName;
   const fileProperties = req.body.fileProperties;
@@ -290,20 +291,26 @@ app.get("/health", async (req, res) => {
   res.status(200).send("Server Running");
 });
 
-app.get("/test", async (req, res) => {
+app.get("/test", async (req, res, next) => {
   const rabbit = require("./utils/rabbit.js");
 
-  await rabbit.initialize();
-  res.status(200).send("Test");
+  next(new Error("Test Error")) 
+  // await rabbit.initialize();
+  // res.status(200).send("Test");
 });
 
-process.on('uncaughtException', function (err) {
-  logger.error(err);
-});
 
 // START SERVER
 logger.info("Starting server....");
 const httpServer = http.createServer(app);
 httpServer.listen(process.env.PORT, () => {
   logger.info(`Server is running on port ${process.env.PORT}`);
+});
+
+
+app.use(errorHandler);
+
+
+process.on('uncaughtException', function (err) {
+  logger.error(err);
 });
