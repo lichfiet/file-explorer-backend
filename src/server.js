@@ -293,10 +293,8 @@ app.get("/health", async (req, res) => {
 
 app.get("/test", async (req, res, next) => {
   const rabbit = require("./utils/rabbit.js");
-
-  next(new Error("Test Error")) 
-  // await rabbit.initialize();
-  // res.status(200).send("Test");
+  await rabbit.initialize();
+  res.status(200).send("Test");
 });
 
 
