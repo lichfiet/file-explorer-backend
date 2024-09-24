@@ -13,11 +13,19 @@ logger.debug(`Printing Env Vars: `);
 
 function logKeys() {
   const vars = {
-    port: config.parsed.PORT,
-    logLevel: config.parsed.LOG_LEVEL, 
-    awsRegion: config.parsed.AWS_REGION,
-    pgDatabase: config.parsed.PG_DATABASE,
-    pgHost: config.parsed.PG_HOST
+    port: config.parsed.PORT || process.env.PORT,
+    logLevel: config.parsed.LOG_LEVEL || process.env.LOG_LEVEL,
+    appName: config.parsed.APP_NAME || process.env.APP_NAME,
+    rabbitMQHost: config.parsed.RABBITMQ_HOST || process.env.RABBITMQ_HOST,
+    awsRegion: config.parsed.AWS_REGION || process.env.AWS_REGION,
+    awsAccessKeyId: config.parsed.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
+    awsS3Bucket: config.parsed.AWS_S3_BUCKET || process.env.AWS_S3_BUCKET,
+    awsS3Endpoint: config.parsed.AWS_S3_ENDPOINT || process.env.AWS_S3_ENDPOINT,
+    pgDatabase: config.parsed.PG_DATABASE || process.env.PG_DATABASE,
+    pgUsername: config.parsed.PG_USERNAME || process.env.PG_USERNAME,
+    pgPassword: config.parsed.PG_PASSWORD || process.env.PG_PASSWORD,
+    pgHost: config.parsed.PG_HOST || process.env.PG_HOST,
+    pgPort: config.parsed.PG_PORT || process.env.PG_PORT
   };
 
   for (let key in vars) {
