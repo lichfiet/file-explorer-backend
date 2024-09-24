@@ -11,6 +11,16 @@ ENV APP_NAME="file-explorer-backend"
 ENV AWS_REGION="us-west-1"
 ENV AWS_ACCESS_KEY_ID="NO_ACCESS_KEY_DEFINED"
 ENV AWS_SECRET_ACCESS_KEY="NO_SECRET_KEY_DEFINED"
+
+# RabbitMQ Configuration
+ENV RABBITMQ_HOST="localhost"
+
+# Postgres Connection Info
+ENV PG_DATABASE="postgres"
+ENV PG_USERNAME="postgres"
+ENV PG_PASSWORD="password"
+ENV PG_HOST="localhost"
+ENV PG_PORT="5432"
 #############################################
 
 
@@ -59,7 +69,6 @@ COPY --from=dev /usr/app/package.json package.json
 
 # run the app
 EXPOSE 8443/tcp
-RUN printenv
 CMD npm run stage
 
 ##
@@ -68,10 +77,12 @@ CMD npm run stage
 ##
 FROM base AS prod
 
+ENV LOG_LEVEL="info"
+
 COPY --from=install /var/prod/node_modules node_modules
 COPY --from=dev /usr/app/src/ ./src/
 COPY --from=dev /usr/app/package.json package.json
 
 # run the app
 EXPOSE 8443/tcp
-CMD npm run prod
+CMD npm start

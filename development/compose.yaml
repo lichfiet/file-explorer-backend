@@ -1,0 +1,57 @@
+
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+  db:
+    image: postgres:alpine
+    container_name: db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+  thumbnailer:
+    depends_on:
+      - rabbitmq
+      - db
+    image: lichfiet/file-explorer-thumbnailer:latest
+    container_name: thumbnailer
+    ports:
+      - "8441:8441"
+    environment:
+      APP_NAME: "file-explorer-thumbnailer"
+      ENVIRONMENT: "development"
+      PORT: "8441"
+      LOG_LEVEL: "debug"
+      RABBITMQ_HOST: "rabbitmq"
+      PG_DATABASE: "postgres"
+      PG_USERNAME: "postgres"
+      PG_PASSWORD: "password"
+      PG_HOST: "db"
+      PG_PORT: "5432"
+  backend:
+    image: file-explorer-backend:dev
+    container_name: backend
+    volumes:
+      - ../:/usr/app/
+      - /usr/app/node_modules
+    ports:
+      - "8443:8443"
+    environment:
+      APP_NAME: "file-explorer-backend"
+      PORT: "8443"
+      LOG_LEVEL: "debug"
+      RABBITMQ_HOST: "rabbitmq"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_S3_BUCKET: "${AWS_S3_BUCKET}"
+      AWS_S3_ENDPOINT: "${AWS_S3_ENDPOINT}"
