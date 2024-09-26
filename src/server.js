@@ -94,14 +94,7 @@ logger.info("Imported Utilities");
 const fileAccessConfig = {
   s3: {
     url: process.env.S3_URL,
-    //apiKey: process.env.S3_API_KEY
-  },
-  ftp: {
-    host: process.env.SFTP_URL,
-    port: process.env.SFTP_PORT, // Typically 22 for SFTP
-    username: process.env.SFTP_USERNAME,
-    password: process.env.SFTP_PASSWORD,
-  },
+  }
 };
 
 
@@ -118,13 +111,12 @@ app.get("/", (req, res) => {
  * currently just takes /getFile/{fileName} argument in the URL,
  */
 app.get("/getFile/:fileName", async (req, res) => {
-  
-  const method = req.headers.method;
+
   const fileName = req.params.fileName;
 
   // Get the File From Remote
   const getFile = async () => {
-    const fileAsBuffer = await fileAccessMethodController.getFile(fileName, fileAccessConfig.ftp, method);
+    const fileAsBuffer = await fileAccessMethodController.getFile(fileName);
 
     if (fileAsBuffer.status !== undefined) {
       res.status(fileAsBuffer.status).send(fileAsBuffer.message);
@@ -154,7 +146,7 @@ app.get("/listFiles/*", async (req, res) => {
   };
 
   try {
-    getFileListInDirectory();
+    await getFileListInDirectory();
   } catch (err) {
     logger.error("Error Retrieving File List: " + err);
     res.status(400).send("Error: " + err.message);
@@ -201,10 +193,9 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
   
 
   const fileName = req.params.fileName;
-  const method = req.headers.method;
 
   const deleteFile = async () => {
-    const request = await fileAccessMethodController.deleteFile(fileName, fileAccessConfig.ftp, method)
+    const request = await fileAccessMethodController.deleteFile(fileName)
     
     // can't see if object exists before delete, succesful response should be good enough for now
     if (request.status !== undefined) {

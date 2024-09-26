@@ -36,12 +36,12 @@ const handleErrors = (err) => {
 	return { status: status, message: message };
 };
 
-const getFile = async (fileId, config) => {
-	logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config ${JSON.stringify(config)}`);
+const getFile = async (fileId) => {
+	logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config`);
 
 	const decodedFileId = decodeURIComponent(fileId);
 
-	const getFile = async (fileId, config) => {
+	const getFile = async (fileId) => {
 		const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileId };
 		const response = await s3Client.send(new GetObjectCommand(reqParams));
 
@@ -58,7 +58,7 @@ const getFile = async (fileId, config) => {
 
 
 	try {
-		return getFile(decodedFileId, config);
+		return getFile(decodedFileId);
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
@@ -67,7 +67,7 @@ const getFile = async (fileId, config) => {
 };
 
 
-const deleteFile = async (fileName, config) => {
+const deleteFile = async (fileName) => {
 	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
 
 	try {
@@ -101,7 +101,7 @@ const deleteFile = async (fileName, config) => {
 
 		await listFilesRecursive(fileName);
 
-		return { status: 200, message: "All files successfully deleted from S3 Bucket" };
+		return { status: 200, message: "File(s) successfully deleted from S3 Bucket" };
 
 	} catch (err) {
 		return handleErrors(err);
@@ -110,7 +110,7 @@ const deleteFile = async (fileName, config) => {
 	}
 };
 
-const uploadFile = async (fileData, fileName, config) => {
+const uploadFile = async (fileData, fileName) => {
 	logger.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
 
 	const decodedFileName = decodeURI(fileName);
@@ -132,8 +132,8 @@ const uploadFile = async (fileData, fileName, config) => {
 	}
 };
 
-const listFiles = async function (config) {
-	const createFile = (name) => {
+const listFiles = async function () {
+	const createFileObject = (name) => {
 		const fileExtension = utils.extension.getFromFileName(name);
 		const extensionType = utils.extension.checkValid(fileExtension)[0];
 
@@ -158,7 +158,7 @@ const listFiles = async function (config) {
 		} else {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map((file) => file.Key))}`);
 			files = response.Contents.map((file) => {
-				return createFile(file.Key);
+				return createFileObject(file.Key);
 			});
 		}
 
@@ -238,7 +238,7 @@ const modifyFile = async function (fileProperties, fileName) {
 	}
 };
 
-const createFolder = async function (folderName, config) {
+const createFolder = async function (folderName) {
 	logger.debug(`Creating Folder: ${folderName} in S3 Bucket`);
 
 	const decodedFolderName = decodeURIComponent(folderName);
@@ -280,7 +280,7 @@ const deleteFolder = async function (folderName) {
 		Prefix: folderName
 	};
 
-	const deleteRecursive = async (folderName) => {
+	const deleteRecursive = async () => {
 
 		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
 		const files = response.Contents || [];
@@ -320,7 +320,7 @@ const deleteFolder = async function (folderName) {
 	}
 };
 
-const listFilesInFolder = async function (folderName, config) {
+const listFilesInFolder = async function (folderName) {
 	const createFile = (name) => {
 		const fileExtension = utils.extension.getFromFileName(name);
 		const extensionType = utils.extension.checkValid(fileExtension)[0];
