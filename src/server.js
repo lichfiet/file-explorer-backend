@@ -76,6 +76,7 @@ const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMet
 const { validationController } = require("./middlewares/reqValidationMiddleware.js"); // For request validation
 const errorHandler = require("./middlewares/error.js"); // error handling
 logger.info("Imported Utilities");
+const rabbit = require("./utils/rabbit.js");
 
 /**
  *
@@ -177,8 +178,14 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
 
   };
 
+  const generateThumbnail = async () => {
+    await rabbit.sendGenerateThumbnailMessage("file-explorer-bucket", fileName);
+  };
+
+
   try {
     await uploadFile();
+    await generateThumbnail();
   } catch (err) {
     res.status(500).send(err)
   } finally {
@@ -206,8 +213,13 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
 
   };
 
+  const deleteThumbnail = async () => {
+    await rabbit.sendDeleteThumbnailMessage("file-explorer-bucket", fileName);
+  };
+
   try {
-    deleteFile();
+    await deleteFile();
+    await deleteThumbnail();
   } catch (err) {
     res.status(500).send(err);
   } finally {
@@ -238,8 +250,18 @@ app.put("/modifyFile/:fileName", async (req, res, next) => {
     // }
   };
 
+  const generateThumbnail = async () => {
+    await rabbit.sendGenerateThumbnailMessage("file-explorer-bucket", fileProperties.name);
+  };
+
+  const deleteThumbnail = async () => {
+    await rabbit.sendDeleteThumbnailMessage("file-explorer-bucket", fileName);
+  };
+
   try {
     modifyFile();
+    await generateThumbnail();
+    await deleteThumbnail();
   } catch (err) {
     logger.error(err);
     res.status(500).send(err);
