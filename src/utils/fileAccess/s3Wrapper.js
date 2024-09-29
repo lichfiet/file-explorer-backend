@@ -1,6 +1,7 @@
 const logger = require("../logger");
 const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
 const { Readable } = require('stream');
+const redis = require("../redis");
 
 /**
  * Local Vars
@@ -10,12 +11,13 @@ const s3Client = new S3Client();
 
 
 class File {
-	constructor(fileName, fileType, fileExtension, fileExtensionType) {
+	constructor(fileName, fileType, fileExtension, fileExtensionType, directory,thumbnailUrl) {
 		this.fileName = fileName;
 		this.fileType = fileType;
 		this.fileExtension = fileExtension;
 		this.fileExtensionType = fileExtensionType;
-		this.directory = '/';
+		this.directory = directory ?? '/';
+		this.thumbnailUrl = thumbnailUrl;
 	}
 }
 
@@ -133,14 +135,16 @@ const uploadFile = async (fileData, fileName) => {
 };
 
 const listFiles = async function () {
-	const createFileObject = (name) => {
+	const createFileObject = async (name) => {
 		const fileExtension = utils.extension.getFromFileName(name);
 		const extensionType = utils.extension.checkValid(fileExtension)[0];
 
 		const type = extensionType != 3 ? "-" : "d";
 		const directory = '/';
 
-		return new File(name, type, fileExtension, extensionType, directory);
+		const thumbnailUrl = type === '-' ? await redis.redisGetS3Url(name) : null;
+
+		return new File(name, type, fileExtension, extensionType, directory, await thumbnailUrl);
 	};
 
 	logger.debug("Requesting File List from S3 Bucket");
@@ -157,9 +161,9 @@ const listFiles = async function () {
 			logger.debug("No Files Found");
 		} else {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map((file) => file.Key))}`);
-			files = response.Contents.map((file) => {
-				return createFileObject(file.Key);
-			});
+			files = await Promise.all(response.Contents.map(async (file) => {
+				return await createFileObject(file.Key);
+			}));
 		}
 
 		return files;
@@ -321,14 +325,16 @@ const deleteFolder = async function (folderName) {
 };
 
 const listFilesInFolder = async function (folderName) {
-	const createFile = (name) => {
+	const createFile = async (name) => {
 		const fileExtension = utils.extension.getFromFileName(name);
 		const extensionType = utils.extension.checkValid(fileExtension)[0];
 
 		const type = extensionType != 3 ? "-" : "d";
 		const directory = '/';
 
-		return new File(name, type, fileExtension, extensionType, directory);
+		const thumbnailUrl = type === '-' ? await redis.redisGetS3Url(name) : null;
+
+		return new File(name, type, fileExtension, extensionType, directory, await thumbnailUrl);
 	};
 
 	logger.debug(`Requesting File List from Folder: ${folderName} in S3 Bucket`);
@@ -349,9 +355,9 @@ const listFilesInFolder = async function (folderName) {
 			logger.debug("No Files Found In: " + folderName);
 		} else {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map((file) => file.Key))}`);
-			files = response.Contents.map((file) => {
+			files = await Promise.all(response.Contents.map(async (file) => {
 				return createFile(file.Key);
-			});
+			}));
 		}
 
 		const createNestedObject = (files) => {
@@ -392,14 +398,15 @@ const listFilesInFolder = async function (folderName) {
 					currentObject = folderObject;
 				}
 
-				if (!file.fileName.endsWith('/')) {
+				if (!file.fileName.endsWith('/') && !file.fileName.startsWith('thumbnail-')) {
 					currentObject.children.push({
 						name: path[path.length - 1],
 						type: file.fileType,
 						extension: file.fileExtension,
 						extensionType: file.fileExtensionType,
 						parentDir: currentObject.directory,
-						directory: file.fileName
+						directory: file.fileName,
+						thumbnailUrl: file.thumbnailUrl
 					});
 				}
 			});

@@ -25,6 +25,7 @@
     "pg-hstore": "^2.3.4",
     "pino": "^8.17.2",
     "pino-pretty": "^10.3.1",
+    "redis": "^4.7.0",
     "sequelize": "^6.36.0",
     "ssh2": "^1.14.0",
     "ssh2-sftp-client": "^9.1.0",

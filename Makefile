@@ -69,14 +69,10 @@ rm: ## Remove the container
 	@echo "\n...Docker Container Removed... \n"
 
 start: ## WIP Docker compose
-	@echo "\n...Launching Dev Server... \n"
-	docker compose -f ./docker/compose.yaml up
-	@echo "\nHold ctrl and click this link 'http://localhost:8000'\n"
+	docker compose --env-file .env -f ./development/compose.yaml up
 
 start-d: ## WIP Docker compose in detached mode
-	@echo "\n...Launching Dev Server... \n"
-	docker compose -f ./docker/compose.yaml up -d
-	@echo "\nHold ctrl and click this link 'http://localhost:8000'\n"
+	docker compose -f ./development/compose.yaml up -d
 
 
 

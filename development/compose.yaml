@@ -1,5 +1,6 @@
 
 services:
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -9,6 +10,7 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+
   db:
     image: postgres:alpine
     container_name: db
@@ -18,6 +20,15 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: postgres
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    environment:
+      REDIS_PASSWORD: "" 
+      REDIS_PORT: "6379"
+
   thumbnailer:
     depends_on:
       - rabbitmq
@@ -27,24 +38,34 @@ services:
     ports:
       - "8441:8441"
     environment:
-      APP_NAME: "file-explorer-thumbnailer"
       ENVIRONMENT: "development"
       PORT: "8441"
-      LOG_LEVEL: "debug"
+      LOG_LEVEL: "info"
       RABBITMQ_HOST: "rabbitmq"
       PG_DATABASE: "postgres"
       PG_USERNAME: "postgres"
       PG_PASSWORD: "password"
       PG_HOST: "db"
       PG_PORT: "5432"
+      AWS_REGION: "${AWS_REGION}"
+      AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+      AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      THUMBNAIL_FILES_LOCATION: "/usr/file/"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      REDIS_TTL: 24000
+
   backend:
     image: file-explorer-backend:dev
     container_name: backend
-    volumes:
-      - ../:/usr/app/
-      - /usr/app/node_modules
+    depends_on:
+      - redis
+      - rabbitmq
     ports:
       - "8443:8443"
+    volumes:
+      - ../:/usr/app/
     environment:
       APP_NAME: "file-explorer-backend"
       PORT: "8443"
@@ -53,5 +74,6 @@ services:
       AWS_REGION: "${AWS_REGION}"
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
-      AWS_S3_BUCKET: "${AWS_S3_BUCKET}"
-      AWS_S3_ENDPOINT: "${AWS_S3_ENDPOINT}"
+      REDIS_HOST: "redis"
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""

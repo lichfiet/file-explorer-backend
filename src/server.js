@@ -77,6 +77,8 @@ const { validationController } = require("./middlewares/reqValidationMiddleware.
 const errorHandler = require("./middlewares/error.js"); // error handling
 logger.info("Imported Utilities");
 const rabbit = require("./utils/rabbit.js");
+const redis = require("./utils/redis.js");
+
 
 /**
  *
@@ -179,17 +181,17 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
   };
 
   const generateThumbnail = async () => {
-    await rabbit.sendGenerateThumbnailMessage("file-explorer-bucket", fileName);
+    await rabbit.sendGenerateThumbnailMessage("file-explorer-s3-bucket", fileName);
   };
 
 
   try {
     await uploadFile();
-    await generateThumbnail();
   } catch (err) {
     res.status(500).send(err)
   } finally {
     fs.unlinkSync(req.file.path);
+    await generateThumbnail();
   }
 });
 
@@ -214,15 +216,15 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
   };
 
   const deleteThumbnail = async () => {
-    await rabbit.sendDeleteThumbnailMessage("file-explorer-bucket", fileName);
+    await rabbit.sendDeleteThumbnailMessage("file-explorer-s3-bucket", fileName);
   };
 
   try {
     await deleteFile();
-    await deleteThumbnail();
   } catch (err) {
     res.status(500).send(err);
   } finally {
+    await deleteThumbnail();
     logger.info(`File deletion request completed.`);
   }
 });
@@ -251,20 +253,21 @@ app.put("/modifyFile/:fileName", async (req, res, next) => {
   };
 
   const generateThumbnail = async () => {
-    await rabbit.sendGenerateThumbnailMessage("file-explorer-bucket", fileProperties.name);
+    await rabbit.sendGenerateThumbnailMessage("file-explorer-s3-bucket", fileProperties.name);
   };
 
   const deleteThumbnail = async () => {
-    await rabbit.sendDeleteThumbnailMessage("file-explorer-bucket", fileName);
+    await rabbit.sendDeleteThumbnailMessage("file-explorer-s3-bucket", fileName);
   };
 
   try {
     modifyFile();
-    await generateThumbnail();
-    await deleteThumbnail();
   } catch (err) {
     logger.error(err);
     res.status(500).send(err);
+  } finally {
+    await generateThumbnail();
+    await deleteThumbnail();
   }
 });
 
@@ -318,6 +321,10 @@ app.get("/test", async (req, res, next) => {
   res.status(200).send("Test");
 });
 
+
+
+redis.connect();
+rabbit.initialize();
 
 // START SERVER
 logger.info("Starting server....");
