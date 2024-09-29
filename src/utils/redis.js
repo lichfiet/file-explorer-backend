@@ -15,6 +15,8 @@ const redisGetS3Url = async (key) => {
         
         if (redisGetS3Url === null) {
             logger.debug(`Redis Key: ${key} not found`);
+            const rabbit = require("./rabbit.js");
+            await rabbit.sendGenerateThumbnailMessage("file-explorer-s3-bucket", key);
             return null;
         } else {
             logger.debug(`Redis Key: ${key} found`);
