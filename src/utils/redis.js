@@ -30,25 +30,31 @@ const redisGetS3Url = async (key) => {
     }
 };
 
-const connect = async () => {
-    try {
+const attemptConnection = async (retries = process.env.REDIS_RETRY_CONNECTION_ATTEMPTS, delay = process.env.REDIS_CONNECTION_RETRY_DELAY) => {
+    return new Promise(async (resolve, reject) => {
         if (redisClient.isOpen) {
             logger.debug("Redis Connection Already Open");
-            return;
-        } else {
-            logger.debug("Redis Connection Not Open, Opening Connection");
-            await redisClient.connect();
+            return resolve();
         }
-    } catch (err) {
-        logger.error(`Error Occurred Connecting to Redis: ${err}`);
-        return err;
-    } finally {
-        logger.debug(`Redis Connection Completed`);
-    }
-};
 
+        await redisClient.connect().then(async (connection, error) => {
+            if (error) {
+                if (retries === 0) {
+                    return reject(new Error('Error connecting to Redis: ' + error));
+                }
+                console.error('Error connecting to Redis. Retrying...', error);
+                setTimeout(() => {
+                    attemptConnection(retries - 1, delay).then(resolve).catch(reject);
+                }, delay);
+            } else {
+                console.log('Connected to Redis');
+                resolve();
+            }
+        });
+    });
+  };
 
 module.exports = redis = {
-    connect: connect,
+    connect: attemptConnection,
     redisGetS3Url: redisGetS3Url
 };

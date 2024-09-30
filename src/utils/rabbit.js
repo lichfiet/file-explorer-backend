@@ -3,28 +3,41 @@ const amqp = require('amqplib/callback_api');
 let connection;
 let channel
 
+const attemptConnection = async (retries = process.env.RABBITMQ_RETRY_CONNECTION_ATTEMPTS, delay = process.env.RABBITMQ_CONNECTION_RETRY_DELAY) => {
+  return new Promise((resolve, reject) => {
+      amqp.connect(`amqp://${process.env.RABBITMQ_HOST}`, (error, connectionObj) => {
+          if (error) {
+              if (retries === 0) {
+                  return reject(new Error('Error connecting to RabbitMQ: ' + error));
+              }
+              console.error('Error connecting to RabbitMQ. Retrying...', error);
+              setTimeout(() => {
+                  attemptConnection(retries - 1, delay).then(resolve).catch(reject);
+              }, delay);
+          } else {
+              console.log('Connected to RabbitMQ');
+              connection = connectionObj;
+              resolve(connectionObj);
+          }
+      });
+  });
+};
+
+
 const initialize = async () => {
     console.log('Initializing RabbitMQ');
 
-    amqp.connect(`amqp://${process.env.RABBITMQ_HOST}`, (error, connectionObj) => {
+    await attemptConnection();
+
+    connection.createChannel((error, channelObj) => {
       if (error) {
-        console.error('Error connecting to RabbitMQ: ', error);
+        console.error('Error creating channel: ', error);
         throw error;
       }
 
-      connection = connectionObj;
-      console.log('Connected to RabbitMQ');
-
-      connection.createChannel((error, channelObj) => {
-        if (error) {
-          console.error('Error creating channel: ', error);
-          throw error;
-        }
-  
-        channel = channelObj
-        console.log('Created channel');
-      })
-  }
+      channel = channelObj
+      console.log('Created channel');
+    }
 )};
 
 
@@ -58,6 +71,7 @@ const sendDeleteThumbnailMessage = (bucketName, key) => {
 };
 
 module.exports = rabbit = {
+    connect: attemptConnection,
     initialize: initialize,
     sendGenerateThumbnailMessage: sendGenerateThumbnailMessage,
     sendDeleteThumbnailMessage: sendDeleteThumbnailMessage

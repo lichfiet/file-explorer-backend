@@ -21,11 +21,6 @@ function logKeys() {
     awsAccessKeyId: config.parsed.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
     awsS3Bucket: config.parsed.AWS_S3_BUCKET || process.env.AWS_S3_BUCKET,
     awsS3Endpoint: config.parsed.AWS_S3_ENDPOINT || process.env.AWS_S3_ENDPOINT,
-    pgDatabase: config.parsed.PG_DATABASE || process.env.PG_DATABASE,
-    pgUsername: config.parsed.PG_USERNAME || process.env.PG_USERNAME,
-    pgPassword: config.parsed.PG_PASSWORD || process.env.PG_PASSWORD,
-    pgHost: config.parsed.PG_HOST || process.env.PG_HOST,
-    pgPort: config.parsed.PG_PORT || process.env.PG_PORT
   };
 
   for (let key in vars) {
@@ -181,7 +176,7 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
   };
 
   const generateThumbnail = async () => {
-    await rabbit.sendGenerateThumbnailMessage("file-explorer-s3-bucket", fileName);
+    await rabbit.sendGenerateThumbnailMessage(process.env.AWS_S3_BUCKET, fileName);
   };
 
 
@@ -216,7 +211,7 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
   };
 
   const deleteThumbnail = async () => {
-    await rabbit.sendDeleteThumbnailMessage("file-explorer-s3-bucket", fileName);
+    await rabbit.sendDeleteThumbnailMessage(process.env.AWS_S3_BUCKET, fileName);
   };
 
   try {
@@ -253,11 +248,11 @@ app.put("/modifyFile/:fileName", async (req, res, next) => {
   };
 
   const generateThumbnail = async () => {
-    await rabbit.sendGenerateThumbnailMessage("file-explorer-s3-bucket", fileProperties.name);
+    await rabbit.sendGenerateThumbnailMessage(process.env.AWS_S3_BUCKET, fileProperties.name);
   };
 
   const deleteThumbnail = async () => {
-    await rabbit.sendDeleteThumbnailMessage("file-explorer-s3-bucket", fileName);
+    await rabbit.sendDeleteThumbnailMessage(process.env.AWS_S3_BUCKET, fileName);
   };
 
   try {
@@ -320,7 +315,6 @@ app.get("/test", async (req, res, next) => {
   await rabbit.initialize();
   res.status(200).send("Test");
 });
-
 
 
 redis.connect();

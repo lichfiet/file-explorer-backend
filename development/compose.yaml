@@ -42,19 +42,17 @@ services:
       PORT: "8441"
       LOG_LEVEL: "info"
       RABBITMQ_HOST: "rabbitmq"
-      PG_DATABASE: "postgres"
-      PG_USERNAME: "postgres"
-      PG_PASSWORD: "password"
-      PG_HOST: "db"
-      PG_PORT: "5432"
       AWS_REGION: "${AWS_REGION}"
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_S3_BUCKET: "file-explorer-s3-bucket"
       THUMBNAIL_FILES_LOCATION: "/usr/file/"
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ""
       REDIS_TTL: 24000
+      REDIS_RETRY_CONNECTION_ATTEMPTS: 5
+      REDIS_CONNECTION_RETRY_DELAY: 6000
 
   backend:
     image: file-explorer-backend:dev
@@ -71,9 +69,12 @@ services:
       PORT: "8443"
       LOG_LEVEL: "debug"
       RABBITMQ_HOST: "rabbitmq"
+      RABBITMQ_CONNECTION_RETRY_DELAY: 6000
+      RABBITMQ_RETRY_CONNECTION_ATTEMPTS: 5
       AWS_REGION: "${AWS_REGION}"
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+      AWS_S3_BUCKET: "file-explorer-s3-bucket"
       REDIS_HOST: "redis"
       REDIS_PORT: "6379"
       REDIS_PASSWORD: ""
