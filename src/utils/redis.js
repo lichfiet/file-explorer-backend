@@ -9,24 +9,23 @@ const redisClient = createClient({
     log: logger,
 });
 
+const rabbit = require("./rabbit.js");
+
 const redisGetS3Url = async (key) => {
     try {
-        const redisGetS3Url = await redisClient.get(key);
+        let redisGetS3Url = await redisClient.get(key);
         
         if (redisGetS3Url === null) {
-            logger.debug(`Redis Key: ${key} not found`);
-            const rabbit = require("./rabbit.js");
-            await rabbit.sendGenerateThumbnailMessage("file-explorer-s3-bucket", key);
+            console.debug(`Redis Key: ${key} not found`);
+            await rabbit.sendGenerateThumbnailMessage(process.env.AWS_S3_BUCKET, key);
             return null;
         } else {
-            logger.debug(`Redis Key: ${key} found`);
+            console.debug(`Redis Key: ${key} found`);
             return redisGetS3Url;
         }
     } catch (err) {
-        logger.error(`Error Occurred Getting Redis Key: ${err}`);
+        console.error(`Error Occurred Getting Redis Key:`, err);
         return err;
-    } finally {
-        logger.debug(`Redis Get for Key: ${key} Completed`);
     }
 };
 
