@@ -339,8 +339,6 @@ const listFilesInFolder = async function (folderName) {
 			};
 
 			files.forEach((file) => {
-				console.log("logging file")
-				console.log(file)
 				let path = trimmedFolderName ? file.fileName.replace(trimmedFolderName + '/', '').split('/') : file.fileName.split('/');
 				path = path.filter((folder) => folder !== '');
 				let currentObject = nestedObject;
