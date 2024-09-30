@@ -11,6 +11,7 @@ ENV APP_NAME="file-explorer-backend"
 ENV AWS_REGION="us-west-1"
 ENV AWS_ACCESS_KEY_ID="NO_ACCESS_KEY_DEFINED"
 ENV AWS_SECRET_ACCESS_KEY="NO_SECRET_KEY_DEFINED"
+ENV AWS_S3_BUCKET="NO_S3_BUCKET_DEFINED"
 
 # RabbitMQ Configuration
 ENV RABBITMQ_HOST="NO_RABBITMQ_HOST_DEFINED"
@@ -81,8 +82,8 @@ FROM base AS prod
 ENV LOG_LEVEL="info"
 
 COPY --from=install /var/prod/node_modules node_modules
-COPY --from=dev /usr/app/src/ ./src/
-COPY --from=dev /usr/app/package.json package.json
+COPY ./src/ /usr/app/src/ 
+COPY ./package.json /usr/app/package.json
 
 # run the app
 EXPOSE 8443/tcp

@@ -10,16 +10,6 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
-
-  db:
-    image: postgres:alpine
-    container_name: db
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: postgres
   redis:
     image: redis:alpine
     container_name: redis
@@ -32,7 +22,6 @@ services:
   thumbnailer:
     depends_on:
       - rabbitmq
-      - db
     image: lichfiet/file-explorer-thumbnailer:latest
     container_name: thumbnailer
     ports:
@@ -40,7 +29,6 @@ services:
     environment:
       ENVIRONMENT: "development"
       PORT: "8441"
-      LOG_LEVEL: "info"
       RABBITMQ_HOST: "rabbitmq"
       AWS_REGION: "${AWS_REGION}"
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
@@ -48,11 +36,6 @@ services:
       AWS_S3_BUCKET: "file-explorer-s3-bucket"
       THUMBNAIL_FILES_LOCATION: "/usr/file/"
       REDIS_HOST: "redis"
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ""
-      REDIS_TTL: 24000
-      REDIS_RETRY_CONNECTION_ATTEMPTS: 5
-      REDIS_CONNECTION_RETRY_DELAY: 6000
 
   backend:
     image: file-explorer-backend:dev
@@ -69,12 +52,8 @@ services:
       PORT: "8443"
       LOG_LEVEL: "debug"
       RABBITMQ_HOST: "rabbitmq"
-      RABBITMQ_CONNECTION_RETRY_DELAY: 6000
-      RABBITMQ_RETRY_CONNECTION_ATTEMPTS: 5
       AWS_REGION: "${AWS_REGION}"
       AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       AWS_S3_BUCKET: "file-explorer-s3-bucket"
       REDIS_HOST: "redis"
-      REDIS_PORT: "6379"
-      REDIS_PASSWORD: ""
