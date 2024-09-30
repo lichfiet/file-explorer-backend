@@ -20,9 +20,6 @@ module.exports = {
 		deleteFile: async (fileName) => {
 			return await s3.deleteFile(fileName);
 		},
-		listFiles: async (config) => {
-			return await s3.listFiles(config);
-		},
 		uploadFile: async (fileData, fileName) => {
 			return await s3.uploadFile(fileData, fileName);
 		},

@@ -28,7 +28,8 @@ class File {
  */
 
 const handleErrors = (err) => {
-	logger.error(`Error Occurred Requesting File From Bucket: ${err}`);
+	logger.error(`Error Occurred Requesting File From Bucket:`);
+	logger.error(err);
 
 	const rawStatus = err.$metadata.httpStatusCode;
 	const rawMessage = 'Unable To Fulfill Request: ' + err.message;
@@ -131,46 +132,6 @@ const uploadFile = async (fileData, fileName) => {
 		return handleErrors(err);
 	} finally {
 		logger.debug(`S3 Upload for Filename: ${fileName} Completed`);
-	}
-};
-
-const listFiles = async function () {
-	const createFileObject = async (name) => {
-		const fileExtension = utils.extension.getFromFileName(name);
-		const extensionType = utils.extension.checkValid(fileExtension)[0];
-
-		const type = extensionType != 3 ? "-" : "d";
-		const directory = '/';
-
-		const thumbnailUrl = type === '-' ? await redis.redisGetS3Url(name) : null;
-
-		return new File(name, type, fileExtension, extensionType, directory, await thumbnailUrl);
-	};
-
-	logger.debug("Requesting File List from S3 Bucket");
-
-	try {
-		const requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
-		};
-
-		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
-		let files = [];
-
-		if (response.Contents === undefined) {
-			logger.debug("No Files Found");
-		} else {
-			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map((file) => file.Key))}`);
-			files = await Promise.all(response.Contents.map(async (file) => {
-				return await createFileObject(file.Key);
-			}));
-		}
-
-		return files;
-	} catch (err) {
-		return handleErrors(err);
-	} finally {
-		logger.debug("S3 List Request Completed");
 	}
 };
 
@@ -355,16 +316,21 @@ const listFilesInFolder = async function (folderName) {
 			logger.debug("No Files Found In: " + folderName);
 		} else {
 			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map((file) => file.Key))}`);
-			files = await Promise.all(response.Contents.map(async (file) => {
-				return createFile(file.Key);
-			}));
+			
+			await Promise.all(response.Contents.map(async (file) => {
+				if (!file.Key.startsWith('thumbnail-')) {
+					files.push(await createFile(file.Key));
+				} else {
+					return;
+				}
+				}));
 		}
 
 		const createNestedObject = (files) => {
 			const trimmedFolderName = folderName.endsWith('/') ? folderName.slice(0, -1) : folderName;
 
 			const nestedObject = {
-				name: folderName === '' ? 'root' : trimmedFolderName.split('/').pop(),
+				name: folderName === '/' ? 'root' : trimmedFolderName.split('/').pop(),
 				type: 'd',
 				extension: 'Dir',
 				extensionType: 3,
@@ -373,9 +339,12 @@ const listFilesInFolder = async function (folderName) {
 			};
 
 			files.forEach((file) => {
+				console.log("logging file")
+				console.log(file)
 				let path = trimmedFolderName ? file.fileName.replace(trimmedFolderName + '/', '').split('/') : file.fileName.split('/');
 				path = path.filter((folder) => folder !== '');
 				let currentObject = nestedObject;
+				
 
 				const numFolders = file.fileName.endsWith('/') ? path.length : path.length - 1;
 
@@ -398,7 +367,7 @@ const listFilesInFolder = async function (folderName) {
 					currentObject = folderObject;
 				}
 
-				if (!file.fileName.endsWith('/') && !file.fileName.startsWith('thumbnail-')) {
+				if (!file.fileName.endsWith('/')) {
 					currentObject.children.push({
 						name: path[path.length - 1],
 						type: file.fileType,
@@ -429,7 +398,6 @@ module.exports = {
 		getFile,
 		uploadFile,
 		deleteFile,
-		listFiles,
 		modifyFile,
 		createFolder,
 		deleteFolder,
