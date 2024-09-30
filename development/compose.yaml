@@ -46,7 +46,7 @@ services:
     ports:
       - "8443:8443"
     volumes:
-      - ../:/usr/app/
+      - ../src/:/usr/app/src/
     environment:
       APP_NAME: "file-explorer-backend"
       PORT: "8443"

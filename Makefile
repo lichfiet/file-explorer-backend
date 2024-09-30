@@ -32,8 +32,7 @@ help: ## This help.
 build: ## Build the container
 	@echo "\n...Building Backend Container Image... \n"
 	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) -f ./development/Dockerfile . --target=dev
-	@echo "\n...Built Backend... \n"
-
+	
 build-nc: ## Build the container with no cache
 	docker build -t $(APP_NAME):dev --platform linux/$(SYS_ARCH) --no-cache -f ./development/Dockerfile . --target=dev
 

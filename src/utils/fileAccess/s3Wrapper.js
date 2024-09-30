@@ -39,13 +39,23 @@ const handleErrors = (err) => {
 	return { status: status, message: message };
 };
 
-const getFile = async (fileId) => {
-	logger.debug(`Requesting file by uuid ${fileId} from S3 Bucket with config`);
+const createFile = async (name) => {
+	const fileExtension = utils.extension.getFromFileName(name);
+	const extensionType = utils.extension.checkValid(fileExtension)[0];
+	const type = extensionType != 3 ? "-" : "d";
+	const directory = '/';
+	const thumbnailUrl = type === '-' ? await redis.redisGetS3Url(name) : null;
 
-	const decodedFileId = decodeURIComponent(fileId);
+	return new File(name, type, fileExtension, extensionType, directory, await thumbnailUrl);
+};
 
-	const getFile = async (fileId) => {
-		const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileId };
+const getFile = async (key) => {
+	logger.debug(`Requesting file by key ${key} from S3 Bucket with config`);
+
+	const decodedkey = decodeURIComponent(key);
+
+	const getFile = async (key) => {
+		const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: key };
 		const response = await s3Client.send(new GetObjectCommand(reqParams));
 
 		const reponseToStream = Readable.from(response.Body);
@@ -59,13 +69,12 @@ const getFile = async (fileId) => {
 		return concatStream(reponseToStream);
 	};
 
-
 	try {
-		return getFile(decodedFileId);
+		return getFile(decodedkey);
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		logger.debug(`S3 Get for Filename: ${fileId} Completed`);
+		logger.debug(`S3 Get for Filename: ${key} Completed`);
 	}
 };
 
@@ -74,7 +83,7 @@ const deleteFile = async (fileName) => {
 	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
 
 	try {
-		const fileExistsReqParams = { Bucket: "file-explorer-s3-bucket", Key: fileName, ObjectAttributes: ["ObjectSize"] };
+		const fileExistsReqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileName };
 		const fileExists = await s3Client.send(new GetObjectAttributesCommand(fileExistsReqParams)).then(
 			(response) => { return (response.$metadata.httpStatusCode === 200 ? true : false) } // checks s3 object exists
 		);
@@ -82,12 +91,12 @@ const deleteFile = async (fileName) => {
 		logger.debug(`File Exists: ${await fileExists}`);
 
 		const deleteFile = async (fileKey) => {
-			const reqParams = { Bucket: "file-explorer-s3-bucket", Key: fileKey };
+			const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileKey };
 			await s3Client.send(new DeleteObjectCommand(reqParams));
 		};
 
 		const listFilesRecursive = async (prefix) => {
-			const reqParams = { Bucket: "file-explorer-s3-bucket", Prefix: prefix };
+			const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Prefix: prefix };
 			const response = await s3Client.send(new ListObjectsCommand(reqParams));
 			const files = response.Contents || [];
 
@@ -119,7 +128,7 @@ const uploadFile = async (fileData, fileName) => {
 	const decodedFileName = decodeURI(fileName);
 
 	const uploadFile = async (fileData, decodedFileName) => {
-		const requestParams = { Bucket: "file-explorer-s3-bucket", Key: decodedFileName, Body: fileData };
+		const requestParams = { Bucket: process.env.AWS_S3_BUCKET, Key: decodedFileName, Body: fileData };
 		const response = await s3Client.send(new PutObjectCommand(requestParams));
 		const responseCode = await response.$metadata.httpStatusCode;
 
@@ -144,7 +153,7 @@ const createFolderInS3 = async function (key) {
 			currentPath += folder + '/';
 			try {
 				const requestInfo = {
-					Bucket: "file-explorer-s3-bucket",
+					Bucket: process.env.AWS_S3_BUCKET,
 					Key: currentPath,
 					Body: ""
 				};
@@ -174,21 +183,21 @@ const modifyFile = async function (fileProperties, fileName) {
 
 	try {
 		if (fileName.endsWith('/')) {
-			const listFilesReqParams = { Bucket: "file-explorer-s3-bucket", Prefix: fileName };
+			const listFilesReqParams = { Bucket: process.env.AWS_S3_BUCKET, Prefix: fileName };
 			const response = await s3Client.send(new ListObjectsCommand(listFilesReqParams));
 			const files = response.Contents || [];
 
 			for (const file of files) {
 				const newFileName = extractedFolderPath + file.Key.substring(fileName.length);
-				const copyReqParams = { Bucket: "file-explorer-s3-bucket", CopySource: "file-explorer-s3-bucket/" + file.Key, Key: newFileName };
+				const copyReqParams = { Bucket: process.env.AWS_S3_BUCKET, CopySource: "file-explorer-s3-bucket/" + file.Key, Key: newFileName };
 				await s3Client.send(new CopyObjectCommand(copyReqParams));
-				await s3Client.send(new DeleteObjectCommand({ Bucket: "file-explorer-s3-bucket", Key: file.Key }));
+				await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: file.Key }));
 			}
 		} else {
-			const copyReqParams = { Bucket: "file-explorer-s3-bucket", CopySource: "file-explorer-s3-bucket/" + fileName, Key: fileProperties.name };
+			const copyReqParams = { Bucket: process.env.AWS_S3_BUCKET, CopySource: "file-explorer-s3-bucket/" + fileName, Key: fileProperties.name };
 			const response = await s3Client.send(new CopyObjectCommand(copyReqParams));
 			if (response.$metadata.httpStatusCode === 200) {
-				await s3Client.send(new DeleteObjectCommand({ Bucket: "file-explorer-s3-bucket", Key: fileName }));
+				await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: fileName }));
 			} else {
 				throw new Error("Error Copying File");
 			}
@@ -215,7 +224,7 @@ const createFolder = async function (folderName) {
 			currentPath += folder + '/';
 			try {
 				const requestInfo = {
-					Bucket: "file-explorer-s3-bucket",
+					Bucket: process.env.AWS_S3_BUCKET,
 					Key: currentPath,
 					Body: ""
 				};
@@ -241,7 +250,7 @@ const deleteFolder = async function (folderName) {
 	const addTrailingSlash = decodedFolderName.endsWith('/') ? decodedFolderName : decodedFolderName + '/';
 
 	const requestInfo = {
-		Bucket: "file-explorer-s3-bucket",
+		Bucket: process.env.AWS_S3_BUCKET,
 		Prefix: folderName
 	};
 
@@ -252,7 +261,7 @@ const deleteFolder = async function (folderName) {
 
 		for (const file of files) {
 			const deleteRequest = {
-				Bucket: "file-explorer-s3-bucket",
+				Bucket: process.env.AWS_S3_BUCKET,
 				Key: file.Key
 			};
 
@@ -286,17 +295,6 @@ const deleteFolder = async function (folderName) {
 };
 
 const listFilesInFolder = async function (folderName) {
-	const createFile = async (name) => {
-		const fileExtension = utils.extension.getFromFileName(name);
-		const extensionType = utils.extension.checkValid(fileExtension)[0];
-
-		const type = extensionType != 3 ? "-" : "d";
-		const directory = '/';
-
-		const thumbnailUrl = type === '-' ? await redis.redisGetS3Url(name) : null;
-
-		return new File(name, type, fileExtension, extensionType, directory, await thumbnailUrl);
-	};
 
 	logger.debug(`Requesting File List from Folder: ${folderName} in S3 Bucket`);
 
@@ -305,7 +303,7 @@ const listFilesInFolder = async function (folderName) {
 
 	try {
 		const requestInfo = {
-			Bucket: "file-explorer-s3-bucket",
+			Bucket: process.env.AWS_S3_BUCKET,
 			Prefix: addTrailingSlash
 		};
 
