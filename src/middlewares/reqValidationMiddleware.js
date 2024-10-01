@@ -13,7 +13,7 @@ const requestValidatior = {};
 
 const validationMiddleware = (req, res, next) => {
     try {
-        logger.debug(`Validation Middleware has been called. TraceId: ${req.traceId}`);
+        // logger.debug(`Validation Middleware has been called. TraceId: ${req.traceId}`);
         next();
     } catch (err) {
         handleError(err, res);

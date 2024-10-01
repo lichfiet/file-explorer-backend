@@ -156,16 +156,13 @@ app.get("/listFiles/*", async (req, res) => {
  */
 app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
   
-  const method = req.headers.method;
   const fileName = req.file.originalname;
-
-  logger.debug(`User (${"trevor"}) Made Request To Upload File: ${fileName} With Connection Method: ${method}`);
 
   const localFilePath = req.file.path;
   const fileData = fs.createReadStream(localFilePath);
 
   const uploadFile = async () => {
-    const upload = await fileAccessMethodController.uploadFile(fileData, fileName, fileAccessConfig.ftp, method);
+    const upload = await fileAccessMethodController.uploadFile(fileData, fileName);
     
     if (upload.status !== undefined) {
       res.status(upload.status).send(upload.message);

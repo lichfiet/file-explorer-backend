@@ -9,7 +9,7 @@
   <h1>Upload a File</h2>
   <form action="/uploadFile" method="post" encType="multipart/form-data">
     <input type="file" name="fileUpload" />
-    <input type="submit" value="Upload" />
+    <input type="submit" value="Upload"/>
   </form>
 
   <h1>Fetch Image from SFTP Server</h1>
@@ -23,9 +23,8 @@
 
   <!-- Form to Get List of Files -->
   <h1>Fetch List of Files From SFTP Server</h1>
-  <form id="buttons" method="GET">
-    <button type="getfiles">Fetch File List</button>
-  </form>
+    <button id="getFiles" type="button">Fetch File List</button>
+  
   <p id="files">Waiting on request...</p>
 
   <script>
@@ -84,21 +83,21 @@
       });
     
     // grab file list 
-    buttons.addEventListener('submit', async function (event) {
+
+    const buttons = document.getElementById('getFiles');
+    buttons.addEventListener('click', async function (event) {
       event.preventDefault();
       try {
-        const response = await fetch(`/listFilesDev`, {
-              headers: {
-                method: 'S3',
-                sessionid: 'true'
-              }});
+        const response = await fetch(`/listFiles/`)
+
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
 
-        const blob = await response.text();
+        let text = await response.text();
 
-        files.innerHTML = blob;
+        files.innerHTML = await text
+        console.log(text)
       } catch (error) {
         console.error('There was an error:', error);
       }

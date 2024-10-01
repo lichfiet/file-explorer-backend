@@ -249,27 +249,18 @@ const deleteFolder = async function (folderName) {
 	const decodedFolderName = decodeURIComponent(folderName);
 	const addTrailingSlash = decodedFolderName.endsWith('/') ? decodedFolderName : decodedFolderName + '/';
 
-	const requestInfo = {
-		Bucket: process.env.AWS_S3_BUCKET,
-		Prefix: folderName
-	};
-
 	const deleteRecursive = async () => {
 
-		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
+		const response = await s3Client.send(new ListObjectsCommand({ Bucket: process.env.AWS_S3_BUCKET, Prefix: folderName }));
 		const files = response.Contents || [];
 
+		// Delete all file objects
 		for (const file of files) {
-			const deleteRequest = {
-				Bucket: process.env.AWS_S3_BUCKET,
-				Key: file.Key
-			};
-
-			await s3Client.send(new DeleteObjectCommand(deleteRequest));
+			await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: file.Key }));
 		}
 
+		// Find subfolders and delete them recursively
 		const prefixes = response.CommonPrefixes || [];
-
 		for (const prefix of prefixes) {
 			await deleteRecursive(prefix.Prefix);
 		}
@@ -281,12 +272,12 @@ const deleteFolder = async function (folderName) {
 
 		const checkFilesExist = await s3Client.send(new ListObjectsCommand(requestInfo));
 		const filesAfterDelete = checkFilesExist.Contents || [];
+
 		if (filesAfterDelete.length === 0) {
 			return "Folder successfully deleted from S3 Bucket";
 		} else {
 			return "Error deleting folder from S3 Bucket. Some files were not deleted.";
 		}
-
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
@@ -296,32 +287,30 @@ const deleteFolder = async function (folderName) {
 
 const listFilesInFolder = async function (folderName) {
 
-	logger.debug(`Requesting File List from Folder: ${folderName} in S3 Bucket`);
+	logger.debug(`Requesting File List from Folder: (${folderName}) in S3 Bucket`);
 
 	const decodedFolderName = decodeURIComponent(folderName);
 	const addTrailingSlash = !decodedFolderName.endsWith('/') && decodedFolderName != '' ? decodedFolderName + '/' : decodedFolderName;
 
 	try {
-		const requestInfo = {
-			Bucket: process.env.AWS_S3_BUCKET,
-			Prefix: addTrailingSlash
-		};
+		const requestInfo = { Bucket: process.env.AWS_S3_BUCKET, Prefix: addTrailingSlash };
 
 		const response = await s3Client.send(new ListObjectsCommand(requestInfo));
 		let files = [];
 
 		if (response.Contents === undefined) {
-			logger.debug("No Files Found In: " + folderName);
+			console.debug("No Files Found In: " + folderName);
 		} else {
-			logger.debug(`Files Returned (${response.Contents.length}): ${JSON.stringify(response.Contents.map((file) => file.Key))}`);
+			console.debug(`Files Returned (${response.Contents.length})`);
 			
 			await Promise.all(response.Contents.map(async (file) => {
-				if (!file.Key.startsWith('thumbnail-')) {
-					files.push(await createFile(file.Key));
-				} else {
-					return;
-				}
-				}));
+				if (!file.Key.startsWith('thumbnail-')) { 
+					files.push(await createFile(file.Key)); } 
+					else { 
+						return; 
+					}}
+				)
+			);
 		}
 
 		const createNestedObject = (files) => {
@@ -341,13 +330,14 @@ const listFilesInFolder = async function (folderName) {
 				path = path.filter((folder) => folder !== '');
 				let currentObject = nestedObject;
 				
-
 				const numFolders = file.fileName.endsWith('/') ? path.length : path.length - 1;
 
+				// Iterate through each folder in the path and create a folder object for each one
 				for (let i = 0; i < numFolders; i++) {
 					let folder = path[i];
 					let folderObject = currentObject.children.find((child) => child.name === folder);
 					if (!folderObject) {
+
 						folderObject = {
 							name: folder,
 							isOpen: currentObject.children.length !== 0 ? true : false,
@@ -358,11 +348,14 @@ const listFilesInFolder = async function (folderName) {
 							parentDir: currentObject.directory,
 							children: [],
 						};
+
 						currentObject.children.push(folderObject);
 					}
+
 					currentObject = folderObject;
 				}
 
+				// If the file is not a folder, add it to the current object's children
 				if (!file.fileName.endsWith('/')) {
 					currentObject.children.push({
 						name: path[path.length - 1],
@@ -379,13 +372,10 @@ const listFilesInFolder = async function (folderName) {
 			return nestedObject;
 		}
 
-		const nestedObject = createNestedObject(files);
+		return createNestedObject(files);
 
-		return nestedObject;
 	} catch (err) {
 		return handleErrors(err);
-	} finally {
-		logger.debug("S3 List Request Completed");
 	}
 };
 

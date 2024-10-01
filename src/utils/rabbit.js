@@ -25,7 +25,7 @@ const attemptConnection = async (retries = process.env.RABBITMQ_RETRY_CONNECTION
 
 
 const initialize = async () => {
-    console.log('Initializing RabbitMQ');
+    console.debug('Initializing RabbitMQ');
 
     await attemptConnection();
 
@@ -36,38 +36,27 @@ const initialize = async () => {
       }
 
       channel = channelObj
-      console.log('Created channel');
+      console.debug('Created channel');
     }
 )};
 
 
 const sendGenerateThumbnailMessage = (bucketName, key) => {
-    console.log('Sending Generate Thumbnail Message');
+    console.debug('Sending Generate Thumbnail Message');
 
-    const message = {
-        bucketName: bucketName,
-        key: key
-    }
-
-    channel.sendToQueue('generateThumbnail', Buffer.from(JSON.stringify(message)), (error) => {
+    channel.sendToQueue('generateThumbnail', Buffer.from(JSON.stringify({ bucketName: bucketName, key: key })), (error) => {
         if (error) {
             console.error('Error publishing Generate Thumbnail Message: ', error);
             throw error;
         }
-
-        console.log('Published Generate Thumbnail Message');
     })
 };
 
+
+
 const sendDeleteThumbnailMessage = (bucketName, key) => {
-    console.log('Sending Delete Thumbnail Message');
-
-    const message = {
-        bucketName: bucketName,
-        key: key
-    }
-
-    channel.sendToQueue('deleteThumbnail', Buffer.from(JSON.stringify(message)))
+    console.debug(`Sending Delete Thumbnail Message for Bucket: ${bucketName} and Key: ${key}`);
+    channel.sendToQueue('deleteThumbnail', Buffer.from(JSON.stringify({bucketName: bucketName, key: key })))
 };
 
 module.exports = rabbit = {
