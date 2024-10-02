@@ -28,18 +28,14 @@ class File {
  */
 
 const handleErrors = (err) => {
-	logger.error(`Error Occurred Requesting File From Bucket:`);
-	logger.error(err);
-
-	const rawStatus = err.$metadata.httpStatusCode;
-	const rawMessage = 'Unable To Fulfill Request: ' + err.message;
-	const status = rawStatus === undefined ? 500 : rawStatus;
-	const message = rawMessage === undefined ? "Error Occurred Handling File Request to/from Bucket" : rawMessage;
-
+	const status = err.$metadata.httpStatusCode === undefined ? 500 : err.$metadata.httpStatusCode;
+	const message = err.message === undefined ? "Error Occurred Handling File Request to/from Bucket" : err.message;
+	
+	logger.error(`Error Occurred Requesting File From Bucket:`, err);
 	return { status: status, message: message };
 };
 
-const createFile = async (name) => {
+const createFileFromName = async (name) => {
 	const fileExtension = utils.extension.getFromFileName(name);
 	const extensionType = utils.extension.checkValid(fileExtension)[0];
 	const type = extensionType != 3 ? "-" : "d";
@@ -49,21 +45,26 @@ const createFile = async (name) => {
 	return new File(name, type, fileExtension, extensionType, directory, await thumbnailUrl);
 };
 
+
+/**
+ * Get File from S3 Bucket, infers bucket name from .env AWS_S3_BUCKET
+ * 
+ * @param {string} key
+ * @returns stream
+ * 
+ */
 const getFile = async (key) => {
 	logger.debug(`Requesting file by key ${key} from S3 Bucket with config`);
 
 	const decodedkey = decodeURIComponent(key);
 
 	const getFile = async (key) => {
-		const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: key };
-		const response = await s3Client.send(new GetObjectCommand(reqParams));
+		const response = await s3Client.send(new GetObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: key }));
 
 		const reponseToStream = Readable.from(response.Body);
 		const concatStream = async (stream) => {
 			const chunks = [];
-			for await (const chunk of stream) {
-				chunks.push(chunk);
-			}
+			for await (const chunk of stream) { chunks.push(chunk); }
 			return Buffer.concat(chunks);
 		};
 		return concatStream(reponseToStream);
@@ -246,6 +247,8 @@ const createFolder = async function (folderName) {
 const deleteFolder = async function (folderName) {
 	logger.debug(`Deleting Folder: ${folderName} in S3 Bucket`);
 
+	// chekc if folder exists and then check empty
+
 	const decodedFolderName = decodeURIComponent(folderName);
 	const addTrailingSlash = decodedFolderName.endsWith('/') ? decodedFolderName : decodedFolderName + '/';
 
@@ -270,7 +273,7 @@ const deleteFolder = async function (folderName) {
 
 		await deleteRecursive(addTrailingSlash);
 
-		const checkFilesExist = await s3Client.send(new ListObjectsCommand(requestInfo));
+		const checkFilesExist = await s3Client.send(new ListObjectsCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: file.Key }));
 		const filesAfterDelete = checkFilesExist.Contents || [];
 
 		if (filesAfterDelete.length === 0) {
@@ -305,7 +308,7 @@ const listFilesInFolder = async function (folderName) {
 			
 			await Promise.all(response.Contents.map(async (file) => {
 				if (!file.Key.startsWith('thumbnail-')) { 
-					files.push(await createFile(file.Key)); } 
+					files.push(await createFileFromName(file.Key)); } 
 					else { 
 						return; 
 					}}
