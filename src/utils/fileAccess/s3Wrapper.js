@@ -150,7 +150,7 @@ const uploadFile = async (fileData, fileName) => {
 	try {
 		return uploadFile(fileData, decodedFileName);
 	} catch (err) {
-		return handleErrors(err);
+		return await handleErrors(err);
 	} finally {
 		logger.debug(`S3 Upload for Filename: ${fileName} Completed`);
 	}
