@@ -9,6 +9,16 @@ const redis = require("../redis");
 
 const s3Client = new S3Client();
 
+// const s3Client = new S3Client({
+// 	endpoint: "http://minio:9000",
+// 	credentials: {
+// 		accessKeyId: "minio",
+// 		secretAccessKey: "password",
+// 	},
+// 	region: "us-west-1",
+// 	forcePathStyle: true,
+// });
+
 
 class File {
 	constructor(fileName, fileType, fileExtension, fileExtensionType, directory,thumbnailUrl) {
@@ -28,10 +38,11 @@ class File {
  */
 
 const handleErrors = (err) => {
+	logger.error(`Error Occurred Requesting File From Bucket:`);
+	logger.error(err);
 	const status = err.$metadata.httpStatusCode === undefined ? 500 : err.$metadata.httpStatusCode;
 	const message = err.message === undefined ? "Error Occurred Handling File Request to/from Bucket" : err.message;
 	
-	logger.error(`Error Occurred Requesting File From Bucket:`, err);
 	return { status: status, message: message };
 };
 
@@ -59,6 +70,7 @@ const getFile = async (key) => {
 	const decodedkey = decodeURIComponent(key);
 
 	const getFile = async (key) => {
+		const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: key };
 		const response = await s3Client.send(new GetObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: key }));
 
 		const reponseToStream = Readable.from(response.Body);
@@ -92,21 +104,20 @@ const deleteFile = async (fileName) => {
 		logger.debug(`File Exists: ${await fileExists}`);
 
 		const deleteFile = async (fileKey) => {
-			const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileKey };
-			await s3Client.send(new DeleteObjectCommand(reqParams));
+			await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: fileKey }));
 		};
 
 		const listFilesRecursive = async (prefix) => {
-			const reqParams = { Bucket: process.env.AWS_S3_BUCKET, Prefix: prefix };
-			const response = await s3Client.send(new ListObjectsCommand(reqParams));
+			const response = await s3Client.send(new ListObjectsCommand({ Bucket: process.env.AWS_S3_BUCKET, Prefix: prefix }));
+			
+			// Delete all file objects
 			const files = response.Contents || [];
-
 			for (const file of files) {
 				await deleteFile(file.Key);
 			}
 
+			// Find subfolders and delete them recursively
 			const prefixes = response.CommonPrefixes || [];
-
 			for (const prefix of prefixes) {
 				await listFilesRecursive(prefix.Prefix);
 			}
