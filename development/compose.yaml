@@ -1,6 +1,9 @@
 
 services:
 
+  # Rabbit
+  # - Queues get created by the backend
+  # - Services use the queues to communicate
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
@@ -10,6 +13,9 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
+
+  # Redis
+  # - Caches thumbnail URLs
   redis:
     image: redis:alpine
     container_name: redis
@@ -19,6 +25,8 @@ services:
       REDIS_PASSWORD: "" 
       REDIS_PORT: "6379"
 
+  # Thumbnailer
+  # - Generates thumbnails for images
   thumbnailer:
     depends_on:
       - rabbitmq
@@ -37,6 +45,8 @@ services:
       THUMBNAIL_FILES_LOCATION: "/usr/file/"
       REDIS_HOST: "redis"
 
+  # Backend
+  # - Handles s3 communication, triggers thumbnailer, etc
   backend:
     image: file-explorer-backend:dev
     container_name: backend
@@ -58,24 +68,24 @@ services:
       AWS_S3_BUCKET: "file-explorer-s3-bucket"
       REDIS_HOST: "redis"
 
-  minio:
-    image: minio/minio
-    container_name: minio
-    environment:
-      MINIO_ROOT_USER: minio
-      MINIO_ROOT_PASSWORD: password
-    volumes:
-      - ../minio:/minio-image/storage
-    ports:
-        - "9000:9000"
-        - "9001:9001"
-    command: server /minio-image/storage --console-address :9001
-    entrypoint: >
-#       /bin/sh -c "
-#         /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
-#         /usr/bin/mc mb myminio/mybucket;
-#         /usr/bin/mc policy set download myminio/mybucket;
-#         exec /usr/bin/minio server /data"
+#   minio:
+#     image: minio/minio
+#     container_name: minio
+#     environment:
+#       MINIO_ROOT_USER: minio
+#       MINIO_ROOT_PASSWORD: password
+#     volumes:
+#       - ../minio:/minio-image/storage
+#     ports:
+#         - "9000:9000"
+#         - "9001:9001"
+#     command: server /minio-image/storage --console-address :9001
+#     entrypoint: >
+# #       /bin/sh -c "
+# #         /usr/bin/mc config host add myminio http://minio:9000 minioadmin minioadmin;
+# #         /usr/bin/mc mb myminio/mybucket;
+# #         /usr/bin/mc policy set download myminio/mybucket;
+# #         exec /usr/bin/minio server /data"
 
-volumes:
-  minio-data:
+# volumes:
+#   minio-data:
