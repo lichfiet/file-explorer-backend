@@ -1,5 +1,5 @@
 const logger = require("../logger");
-const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand } = require("@aws-sdk/client-s3");
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand, ObjectAttributes } = require("@aws-sdk/client-s3");
 const { Readable } = require('stream');
 const redis = require("../redis");
 
@@ -96,7 +96,7 @@ const deleteFile = async (fileName) => {
 	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
 
 	try {
-		const fileExistsReqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileName };
+		const fileExistsReqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileName, ObjectAttributes: ["ObjectSize"] };
 		const fileExists = await s3Client.send(new GetObjectAttributesCommand(fileExistsReqParams)).then(
 			(response) => { return (response.$metadata.httpStatusCode === 200 ? true : false) } // checks s3 object exists
 		);
