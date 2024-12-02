@@ -30,7 +30,7 @@ function logKeys() {
 
 logKeys();
 
-logger.trace(config.parsed.AWS_SECRET_ACCESS_KEY);
+logger.trace(process.env);
 
 
 /**
