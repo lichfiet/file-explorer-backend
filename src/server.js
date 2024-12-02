@@ -30,6 +30,8 @@ function logKeys() {
 
 logKeys();
 
+logger.trace(config.parsed.AWS_SECRET_ACCESS_KEY);
+
 
 /**
  ** App Packages
@@ -292,7 +294,7 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
   };
 
   try {
-     deleteFolder();
+     await deleteFolder();
   } catch (err) {
     logger.error(err);
     res.status(500).send(err);
