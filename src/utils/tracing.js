@@ -52,21 +52,4 @@ logger.emit({
   attributes: { 'log.type': 'startup' },
 });
 
-// Start the SDK and return it
-sdk.start().then(() => {
-  logger.emit({
-    severityNumber: SeverityNumber.INFO,
-    severityText: 'info',
-    body: 'OpenTelemetry SDK started successfully.',
-    attributes: { 'log.type': 'lifecycle' },
-  });
-}).catch((error) => {
-  logger.emit({
-    severityNumber: SeverityNumber.ERROR,
-    severityText: 'error',
-    body: 'Failed to start OpenTelemetry SDK.',
-    attributes: { 'error.message': error.message, 'log.type': 'lifecycle' },
-  });
-});
-
 module.exports = { sdk, logger };
