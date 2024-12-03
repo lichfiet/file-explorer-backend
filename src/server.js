@@ -1,6 +1,10 @@
 const dotenv = require("dotenv"); // for use of environment variables
 const config = dotenv.config(); // Prints Local Variables
 
+
+
+
+
 /**
  ** Observability
  */
@@ -22,7 +26,7 @@ function logKeys() {
     awsS3Bucket: config.parsed.AWS_S3_BUCKET || process.env.AWS_S3_BUCKET,
     awsS3Endpoint: config.parsed.AWS_S3_ENDPOINT || process.env.AWS_S3_ENDPOINT,
   };
-
+  
   for (let key in vars) {
     logger.info(`${key}: ${vars[key]}`);
   }
@@ -30,7 +34,21 @@ function logKeys() {
 
 logKeys();
 
-logger.trace(process.env);
+
+const sdk = require("./utils/tracing.js");
+if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  sdk.start();
+
+  process.on('SIGTERM', () => {
+    sdk
+      .shutdown()
+      .then(() => console.log('Tracing terminated'))
+      .catch((error) => console.log('Error terminating tracing', error))
+      .finally(() => process.exit(0))
+  })
+}
+
+
 
 
 /**
