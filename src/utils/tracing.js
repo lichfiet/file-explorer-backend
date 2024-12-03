@@ -8,7 +8,10 @@ const { Resource } = require('@opentelemetry/resources')
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions')
 
 const exporterOptions = {
-  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT,
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/traces',
+  headers: {
+    'OT-Tracer-Span-Export': 'true',
+  },
 }
 
 const traceExporter = new OTLPTraceExporter(exporterOptions)
