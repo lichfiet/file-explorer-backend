@@ -1,8 +1,26 @@
+/**
+ * Initialize Tracing
+ */
+const sdk = require("./utils/observability.js");
+if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  sdk.start();
+
+  process.on('SIGTERM', () => {
+    sdk
+      .shutdown()
+      .then(() => console.log('Tracing terminated'))
+      .catch((error) => console.log('Error terminating tracing', error))
+      .finally(() => process.exit(0))
+  })
+}
+
+
+
+
+
+// load environment variables if local .env file exists
 const dotenv = require("dotenv"); // for use of environment variables
 const config = dotenv.config(); // Prints Local Variables
-
-
-
 
 
 /**
@@ -25,6 +43,10 @@ function logKeys() {
     awsAccessKeyId: config.parsed.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
     awsS3Bucket: config.parsed.AWS_S3_BUCKET || process.env.AWS_S3_BUCKET,
     awsS3Endpoint: config.parsed.AWS_S3_ENDPOINT || process.env.AWS_S3_ENDPOINT,
+    k8sPodName: process.env.K8S_POD_NAME || '',
+    k8sNamespace: process.env.K8S_NAMESPACE || '',
+    k8sNodeName: process.env.K8S_NODE || '',
+    k8sDeploymentName: process.env.K8S_POD_IP || '',
   };
   
   for (let key in vars) {
@@ -33,21 +55,6 @@ function logKeys() {
 };
 
 logKeys();
-
-
-const sdk = require("./utils/tracing.js");
-if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  sdk.start();
-
-  process.on('SIGTERM', () => {
-    sdk
-      .shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.log('Error terminating tracing', error))
-      .finally(() => process.exit(0))
-  })
-}
-
 
 
 
@@ -66,7 +73,6 @@ const app = express();
 
 
 const cors = require("cors"); // Cross Origin Resource Sharing
-const traceMiddleware = require("./middlewares/traceMiddleware.js"); // Distributed Tracing
 const loggerMiddleware = require("./middlewares/loggingMiddleware.js"); // Request Logging
 const { validationMiddleware } = require("./middlewares/reqValidationMiddleware.js"); // Request Validation
 const multer = require("multer"); // File Uploads
@@ -74,7 +80,6 @@ const upload = multer({ dest: "../uploads" }); // Set up multer for handling fil
 
 app.use(express.json());
 app.use(cors());
-app.use(traceMiddleware);
 app.use(validationMiddleware);
 app.use(loggerMiddleware);
 
