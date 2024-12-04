@@ -24,7 +24,7 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 }
 
 const logExporter = {
-  url: otelUrl
+  url: otelUrl + '/v1/logs'
 };
 
 const traceExporter = new OTLPTraceExporter(exporterOptions)
@@ -33,9 +33,7 @@ const sdk = new opentelemetry.NodeSDK({
   logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new OTLPLogExporter(logExporter))],
   instrumentations: [
     getNodeAutoInstrumentations(),
-    new PinoInstrumentation({
-      logLevel: process.env.LOG_LEVEL || 'info'
-    }),
+    new PinoInstrumentation(),
   ],
   resource: new Resource({
     // highlight-next-line
