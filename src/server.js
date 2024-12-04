@@ -6,7 +6,7 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   observability.sdk.start();
 
   process.on('SIGTERM', () => {
-    sdk
+    observability.sdk
       .shutdown()
       .then(() => console.log('Tracing terminated'))
       .catch((error) => console.log('Error terminating tracing', error))
