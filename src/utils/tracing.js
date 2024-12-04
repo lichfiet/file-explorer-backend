@@ -21,14 +21,15 @@ const exporterOptions = {
   },
 };
 
-const traceExporter = new OTLPTraceExporter(exporterOptions);
+const traceExporter = new OTLPTraceExporter(exporterOptions)
 const sdk = new opentelemetry.NodeSDK({
   traceExporter,
   instrumentations: [getNodeAutoInstrumentations()],
   resource: new Resource({
+    // highlight-next-line
     [SemanticResourceAttributes.SERVICE_NAME]: 'node_app',
   }),
-});
+})
 
 // Log Exporter Configuration
 const logExporterOptions = {
