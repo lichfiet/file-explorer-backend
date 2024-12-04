@@ -1,9 +1,9 @@
 /**
- * Initialize Tracing
+ ** Observability
  */
-const sdk = require("./utils/observability.js");
+const observability = require("./utils/observability.js");
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  sdk.start();
+  observability.sdk.start();
 
   process.on('SIGTERM', () => {
     sdk
@@ -14,24 +14,16 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   })
 }
 
-
-
-
+observability.logger.info("Initializing logging");
 
 // load environment variables if local .env file exists
 const dotenv = require("dotenv"); // for use of environment variables
 const config = dotenv.config(); // Prints Local Variables
 
-
-/**
- ** Observability
- */
-const logger = require("./utils/logger.js"); // logging
-
 /**
  * * Environment Variables
 */
-logger.debug(`Printing Env Vars: `);
+console.debug(`Printing Env Vars: `);
 
 function logKeys() {
   const vars = {
@@ -50,7 +42,7 @@ function logKeys() {
   };
   
   for (let key in vars) {
-    logger.info(`${key}: ${vars[key]}`);
+    console.info(`${key}: ${vars[key]}`);
   }
 };
 
@@ -73,7 +65,6 @@ const app = express();
 
 
 const cors = require("cors"); // Cross Origin Resource Sharing
-const loggerMiddleware = require("./middlewares/loggingMiddleware.js"); // Request Logging
 const { validationMiddleware } = require("./middlewares/reqValidationMiddleware.js"); // Request Validation
 const multer = require("multer"); // File Uploads
 const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
@@ -81,7 +72,6 @@ const upload = multer({ dest: "../uploads" }); // Set up multer for handling fil
 app.use(express.json());
 app.use(cors());
 app.use(validationMiddleware);
-app.use(loggerMiddleware);
 
 
 
@@ -95,7 +85,7 @@ app.use(loggerMiddleware);
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
 const { validationController } = require("./middlewares/reqValidationMiddleware.js"); // For request validation
 const errorHandler = require("./middlewares/error.js"); // error handling
-logger.info("Imported Utilities");
+console.info("Imported Utilities");
 const rabbit = require("./utils/rabbit.js");
 const redis = require("./utils/redis.js");
 
@@ -171,7 +161,7 @@ app.get("/listFiles/*", async (req, res) => {
   try {
     await getFileListInDirectory();
   } catch (err) {
-    logger.error("Error Retrieving File List: " + err);
+    console.error("Error Retrieving File List: " + err);
     res.status(400).send("Error: " + err.message);
   }
 });
@@ -242,7 +232,7 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
     res.status(500).send(err);
   } finally {
     await deleteThumbnail();
-    logger.info(`File deletion request completed.`);
+    console.info(`File deletion request completed.`);
   }
 });
 
@@ -280,7 +270,7 @@ app.put("/modifyFile/:fileName", async (req, res, next) => {
   try {
     modifyFile();
   } catch (err) {
-    logger.error(err);
+    console.error(err);
     res.status(500).send(err);
   } finally {
     await generateThumbnail();
@@ -301,7 +291,7 @@ app.post("/createFolder/:folderName", async (req, res) => {
   try {
     createFolder();
   } catch (err) {
-    logger.error(err);
+    console.error(err);
     res.status(500).send(err);
   }
 });
@@ -319,7 +309,7 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
   try {
      await deleteFolder();
   } catch (err) {
-    logger.error(err);
+    console.error(err);
     res.status(500).send(err);
   }
 });
@@ -343,10 +333,10 @@ redis.connect();
 rabbit.initialize();
 
 // START SERVER
-logger.info("Starting server....");
+console.info("Starting server....");
 const httpServer = http.createServer(app);
 httpServer.listen(process.env.PORT, () => {
-  logger.info(`Server is running on port ${process.env.PORT}`);
+  console.info(`Server is running on port ${process.env.PORT}`);
 });
 
 
@@ -354,5 +344,5 @@ app.use(errorHandler);
 
 
 process.on('uncaughtException', function (err) {
-  logger.error(err);
+  console.error(err);
 });
