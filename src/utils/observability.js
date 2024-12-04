@@ -16,19 +16,18 @@ const exporterOptions = {
   },
 };
 
+const logExporter = new OTLPLogExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/logs', // Update for your backend
+});
+
 const traceExporter = new OTLPTraceExporter(exporterOptions)
 const sdk = new opentelemetry.NodeSDK({
   traceExporter,
-  logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new opentelemetry.logs.ConsoleLogRecordExporter())],
+  logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(logExporter)],
   instrumentations: [
     getNodeAutoInstrumentations(),
     new PinoInstrumentation({
-      logLevel: process.env.LOG_LEVEL || 'info',
-      ignoreUrls: [/localhost/],
-      ignoreMethodNames: ['send'],
-      recordExceptions: true,
-      recordPerformance: true,
-      recordExceptionStacktraces: true
+      logLevel: process.env.LOG_LEVEL || 'info'
     }),
   ],
   resource: new Resource({
@@ -45,20 +44,20 @@ const logger = pino({
   }
   });
 
-  console.error = function(message) {
-    logger.error(message);
-  };
-  
-  console.warn = function(message) {
-    logger.warn(message);
-  };
-  
-  console.log = function(message) {
-    logger.info(message);
-  };
-  
-  console.debug = function(message) {
-    logger.debug(message);
-  };
+console.error = function(message) {
+  logger.error(message);
+};
+
+console.warn = function(message) {
+  logger.warn(message);
+};
+
+console.log = function(message) {
+  logger.info(message);
+};
+
+console.debug = function(message) {
+  logger.debug(message);
+};
 
 module.exports = { sdk, logger };
