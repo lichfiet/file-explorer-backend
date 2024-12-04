@@ -53,4 +53,4 @@ logger.emit({
   attributes: { 'log.type': 'startup' },
 });
 
-module.exports = { sdk, logger };
+module.exports = sdk;
