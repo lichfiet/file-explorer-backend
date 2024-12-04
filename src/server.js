@@ -35,7 +35,7 @@ function logKeys() {
     awsAccessKeyId: config.parsed.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID,
     awsS3Bucket: config.parsed.AWS_S3_BUCKET || process.env.AWS_S3_BUCKET,
     awsS3Endpoint: config.parsed.AWS_S3_ENDPOINT || process.env.AWS_S3_ENDPOINT,
-    k8sPodName: process.env.K8S_POD_NAME || '',
+    k8sPodName: process.env.K8S_POD || '',
     k8sNamespace: process.env.K8S_NAMESPACE || '',
     k8sNodeName: process.env.K8S_NODE || '',
     k8sDeploymentName: process.env.K8S_POD_IP || '',
