@@ -19,7 +19,7 @@ const exporterOptions = {
 const traceExporter = new OTLPTraceExporter(exporterOptions)
 const sdk = new opentelemetry.NodeSDK({
   traceExporter,
-  logRecordProcessor: new opentelemetry.logs.SimpleLogRecordProcessor(new opentelemetry.logs.ConsoleLogRecordExporter()),
+  logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new opentelemetry.logs.ConsoleLogRecordExporter())],
   instrumentations: [
     getNodeAutoInstrumentations(),
     new PinoInstrumentation({
