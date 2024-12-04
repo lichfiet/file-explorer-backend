@@ -20,7 +20,7 @@ const exporterOptions = {
 let otelUrl = "localhost:4317";
 
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  otelUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/traces'
+  otelUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 }
 
 const logExporter = {
