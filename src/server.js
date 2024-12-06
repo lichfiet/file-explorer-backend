@@ -84,7 +84,6 @@ app.use(cors());
  */
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
 const errorHandler = require("./middlewares/error.js"); // error handling
-app.use(errorHandler);
 
 console.info("Imported Utilities");
 const rabbit = require("./utils/rabbit.js");
