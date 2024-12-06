@@ -62,7 +62,9 @@ const sdk = new opentelemetry.NodeSDK({
   }),
 })
 
-const logger = pino()
+const logger = pino({
+
+})
 
 logger.info("test")
 
@@ -86,4 +88,4 @@ console.info = function(message) {
   logger.info(message);
 };
 
-module.exports = { sdk };
+module.exports = { sdk, logger };
