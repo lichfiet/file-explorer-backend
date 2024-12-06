@@ -66,4 +66,24 @@ let logger = pino()
 
 logger.info("test")
 
+console.error = function(message) {
+  logger.error(message);
+};
+
+console.warn = function(message) {
+  logger.warn(message);
+};
+
+console.log = function(message) {
+  logger.info(message);
+};
+
+console.debug = function(message) {
+  logger.debug(message);
+};
+
+console.info = function(message) {
+  logger.info(message);
+};
+
 module.exports = { sdk };
