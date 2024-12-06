@@ -317,7 +317,7 @@ app.get("/health", async (req, res) => {
         res.status(500).send("Error Connecting to OTLP Exporter");
         console.error('Error Connecting to OTLP Exporter', err);
       }
-    })ß
+    })
 
   // Check Redis Connection
   console.log("Checking Redis");
