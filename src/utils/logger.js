@@ -1,11 +1,4 @@
-const pino = require('pino');
-
-// Create a pino logger instance
-const logger = pino({
-  transport: {
-    target: 'pino-pretty', // Optional: Makes logs human-readable in development
-  },
-});
+const { logger } = require('./observability.js')
 
 console.error = function(message) {
   logger.error(message);
