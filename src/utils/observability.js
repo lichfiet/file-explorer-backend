@@ -48,7 +48,7 @@ const sdk = new opentelemetry.NodeSDK({
 
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   sdk.start();
-ß
+  
   process.on('SIGTERM', () => {
     sdk.shutdown()
       .then(() => console.log('Tracing terminated'))
