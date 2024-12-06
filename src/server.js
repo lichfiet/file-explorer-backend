@@ -327,14 +327,6 @@ app.get("/health", async (req, res) => {
         res.status(500).send("Error Connecting to OTLP Exporter");
       }
     }
-    
-    try {
-      await rabbit.initialize();
-      await redis.connect();
-    } catch (err) {
-      res.status(500).send("Error Connecting to RabbitMQ or Redis");
-    }
-
 
   res.status(200).send({
     status: "OK",
