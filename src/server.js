@@ -13,7 +13,7 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       .then(() => console.log('Tracing terminated'))
       .catch((error) => console.log('Error terminating tracing', error))
       .finally(() => process.exit(0))
-    })
+  })
   console.info("Initializing logging");
 }
 
@@ -42,7 +42,7 @@ function logKeys() {
     k8sNodeName: process.env.K8S_NODE || '',
     k8sDeploymentName: process.env.K8S_POD_IP || '',
   };
-  
+
   for (let key in vars) {
     console.info(`${key}: ${vars[key]}`);
   }
@@ -84,9 +84,12 @@ app.use(cors());
  */
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
 const errorHandler = require("./middlewares/error.js"); // error handling
+app.use(errorHandler);
+
 console.info("Imported Utilities");
 const rabbit = require("./utils/rabbit.js");
 const redis = require("./utils/redis.js");
+const { default: axios } = require("axios");
 
 
 /**
@@ -149,7 +152,7 @@ app.get("/getFile/:fileName", async (req, res) => {
  * * /listFilesDev to fetch file list
  */
 app.get("/listFiles/*", async (req, res) => {
-  
+
   const method = req.headers["method"]; // Look for connection method in HTTP header
   const directory = req.params[0]; // Combine the directory and any additional subdirectories
 
@@ -169,7 +172,7 @@ app.get("/listFiles/*", async (req, res) => {
  * * /uploadFile to upload file to sftp or s3
  */
 app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
-  
+
   const fileName = req.file.originalname;
 
   const localFilePath = req.file.path;
@@ -177,12 +180,12 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
 
   const uploadFile = async () => {
     const upload = await fileAccessMethodController.uploadFile(fileData, fileName);
-    
+
     if (upload.status !== undefined) {
       res.status(upload.status).send(upload.message);
     } else {
       res.status(200).send(upload);
-    } 
+    }
 
   };
 
@@ -205,13 +208,13 @@ app.post("/uploadFile", upload.single("fileUpload"), async (req, res) => {
  * * /deleteFile to delete files
  */
 app.delete("/deleteFile/:fileName", async (req, res) => {
-  
+
 
   const fileName = req.params.fileName;
 
   const deleteFile = async () => {
     const request = await fileAccessMethodController.deleteFile(fileName)
-    
+
     // can't see if object exists before delete, succesful response should be good enough for now
     if (request.status !== undefined) {
       res.status(request.status).send(await request.message);
@@ -240,15 +243,15 @@ app.delete("/deleteFile/:fileName", async (req, res) => {
  * * /renameFile to rename files
  */
 app.put("/modifyFile/:fileName", async (req, res, next) => {
-  
+
   const fileName = req.params.fileName;
   const fileProperties = req.body.fileProperties;
   const method = req.headers.method;
-  
+
 
   const modifyFile = async () => {
 
-    const request = await fileAccessMethodController.modifyFile( fileProperties, fileName, fileAccessConfig.ftp, method);
+    const request = await fileAccessMethodController.modifyFile(fileProperties, fileName, fileAccessConfig.ftp, method);
     res.status(200).send(await request.message);
 
     // if (request.status === 200) {
@@ -278,7 +281,7 @@ app.put("/modifyFile/:fileName", async (req, res, next) => {
 });
 
 app.post("/createFolder/:folderName", async (req, res) => {
-  
+
   const folderName = req.params.folderName;
   const method = req.headers.method;
 
@@ -306,7 +309,7 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
   };
 
   try {
-     await deleteFolder();
+    await deleteFolder();
   } catch (err) {
     console.error(err);
     res.status(500).send(err);
@@ -317,9 +320,28 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
  * * /health for healthchecks in the future
  */
 app.get("/health", async (req, res) => {
-  console.log(req);
-  res.status(200).send("Server Running");
+  if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+    try {
+        axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health');
+      } catch (err) {
+        throw new Error("Error Connecting to OTLP Exporter");
+      }
+    }
+    
+    try {
+      await rabbit.initialize();
+      await redis.connect();
+    } catch (err) {
+      throw new Error("Error Connecting to RabbitMQ or Redis");
+    }
+
+  res.status(200).send({
+    status: "OK",
+    message: "Server Running"
+  })
+
 });
+  
 
 app.get("/test", async (req, res, next) => {
   const rabbit = require("./utils/rabbit.js");
@@ -339,7 +361,6 @@ httpServer.listen(process.env.PORT, () => {
 });
 
 
-app.use(errorHandler);
 
 
 process.on('uncaughtException', function (err) {

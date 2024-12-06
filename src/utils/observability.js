@@ -9,6 +9,8 @@ const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http');
 const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
 
+const { api } = require('@opentelemetry/api');
+
 // Trace Exporter Configuration
 const exporterOptions = {
   url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/traces',
