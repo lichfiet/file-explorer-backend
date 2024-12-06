@@ -62,7 +62,7 @@ const sdk = new opentelemetry.NodeSDK({
   }),
 })
 
-let logger = pino()
+const logger = pino()
 
 logger.info("test")
 

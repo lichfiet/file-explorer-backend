@@ -311,7 +311,7 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
 app.get("/health", async (req, res) => {
   console.log("Checking Health");
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health').then((response) => {
+    axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace('6379', '13133') + '/health').then((response) => {
       if (!response.status) {
         res.status(500).send("Error Connecting to OTLP Exporter");
       }
@@ -338,7 +338,6 @@ app.get("/health", async (req, res) => {
     rabbit: "Healthy"
       ? process.env.OTEL_EXPORTER_OTLP_ENDPOINT : "Healthy"
   })
-
 });
 
 redis.connect();
@@ -350,8 +349,6 @@ const httpServer = http.createServer(app);
 httpServer.listen(process.env.PORT, () => {
   console.info(`Server is running on port ${process.env.PORT}`);
 });
-
-
 
 
 process.on('uncaughtException', function (err) {
