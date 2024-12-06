@@ -45,19 +45,6 @@ const sdk = new opentelemetry.NodeSDK({
   }),
 })
 
-
-if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  sdk.start();
-  
-  process.on('SIGTERM', () => {
-    sdk.shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.log('Error terminating tracing', error))
-      .finally(() => process.exit(0))
-  })
-  console.info("Initializing logging");
-}
-
 const logger = pino({
   transport: {
     target: 'pino-pretty', // Optional: Makes logs human-readable in development
