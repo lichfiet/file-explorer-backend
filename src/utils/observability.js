@@ -33,7 +33,10 @@ const sdk = new opentelemetry.NodeSDK({
   logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new OTLPLogExporter(logExporter))],
   instrumentations: [
     getNodeAutoInstrumentations(),
-    new PinoInstrumentation(),
+    new PinoInstrumentation({
+      logLevel: process.env.LOG_LEVEL || 'info',
+      ignoreUrls: [/localhost/],
+    }),
   ],
   resource: new Resource({
     // highlight-next-line
@@ -41,28 +44,4 @@ const sdk = new opentelemetry.NodeSDK({
   }),
 })
 
-const pino = require('pino');
-const logger = pino({
-  level: `${(process.env.LOG_LEVEL).toLowerCase()}` || 'info', // log level for development
-  transport: {
-    target: 'pino-pretty'
-  }
-  });
-
-console.error = function(message) {
-  logger.error(message);
-};
-
-console.warn = function(message) {
-  logger.warn(message);
-};
-
-console.log = function(message) {
-  logger.info(message);
-};
-
-console.debug = function(message) {
-  logger.debug(message);
-};
-
-module.exports = { sdk, logger };
+module.exports = { sdk };

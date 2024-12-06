@@ -1,7 +1,7 @@
-const logger = require("../logger");
 const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectCommand, ListObjectsCommand, CopyObjectCommand, GetObjectAttributesCommand, ObjectAttributes } = require("@aws-sdk/client-s3");
 const { Readable } = require('stream');
 const redis = require("../redis");
+const utils = require("../utilityWrapper.js");
 
 /**
  * Local Vars
@@ -38,8 +38,8 @@ class File {
  */
 
 const handleErrors = (err) => {
-	logger.error(`Error Occurred Requesting File From Bucket:`);
-	logger.error(err);
+	console.error(`Error Occurred Requesting File From Bucket:`);
+	console.error(err);
 	const status = err.$metadata.httpStatusCode === undefined ? 500 : err.$metadata.httpStatusCode;
 	const message = err.message === undefined ? "Error Occurred Handling File Request to/from Bucket" : err.message;
 	
@@ -65,7 +65,7 @@ const createFileFromName = async (name) => {
  * 
  */
 const getFile = async (key) => {
-	logger.debug(`Requesting file by key ${key} from S3 Bucket with config`);
+	console.debug(`Requesting file by key ${key} from S3 Bucket with config`);
 
 	const decodedkey = decodeURIComponent(key);
 
@@ -87,13 +87,13 @@ const getFile = async (key) => {
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		logger.debug(`S3 Get for Filename: ${key} Completed`);
+		console.debug(`S3 Get for Filename: ${key} Completed`);
 	}
 };
 
 
 const deleteFile = async (fileName) => {
-	logger.debug(`Deleting file: ${fileName} from S3 Bucket`);
+	console.debug(`Deleting file: ${fileName} from S3 Bucket`);
 
 	try {
 		const fileExistsReqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileName, ObjectAttributes: ["ObjectSize"] };
@@ -101,7 +101,7 @@ const deleteFile = async (fileName) => {
 			(response) => { return (response.$metadata.httpStatusCode === 200 ? true : false) } // checks s3 object exists
 		);
 
-		logger.debug(`File Exists: ${await fileExists}`);
+		console.debug(`File Exists: ${await fileExists}`);
 
 		const deleteFile = async (fileKey) => {
 			await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: fileKey }));
@@ -130,12 +130,12 @@ const deleteFile = async (fileName) => {
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		logger.debug(`S3 Delete for Filename: ${fileName} Completed`);
+		console.debug(`S3 Delete for Filename: ${fileName} Completed`);
 	}
 };
 
 const uploadFile = async (fileData, fileName) => {
-	logger.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
+	console.debug(`Uploading file by filename: ${fileName} to S3 Bucket`);
 
 	const decodedFileName = decodeURI(fileName);
 
@@ -152,7 +152,7 @@ const uploadFile = async (fileData, fileName) => {
 	} catch (err) {
 		return await handleErrors(err);
 	} finally {
-		logger.debug(`S3 Upload for Filename: ${fileName} Completed`);
+		console.debug(`S3 Upload for Filename: ${fileName} Completed`);
 	}
 };
 
@@ -184,12 +184,12 @@ const createFolderInS3 = async function (key) {
 
 const modifyFile = async function (fileProperties, fileName) {
 	console.log(fileName)
-	logger.debug("Modifying File in S3 Bucket");
+	console.debug("Modifying File in S3 Bucket");
 
 	const extractedPath = fileProperties.name.split('/');
 	const extractedFolderPath = extractedPath.slice(0, extractedPath.length - 1).join('/') + '/';
 
-	logger.error(`Extracted Path: ${extractedFolderPath}`);
+	console.error(`Extracted Path: ${extractedFolderPath}`);
 
 	await createFolderInS3(extractedFolderPath)
 
@@ -220,12 +220,12 @@ const modifyFile = async function (fileProperties, fileName) {
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		logger.debug("S3 Modify Request Completed");
+		console.debug("S3 Modify Request Completed");
 	}
 };
 
 const createFolder = async function (folderName) {
-	logger.debug(`Creating Folder: ${folderName} in S3 Bucket`);
+	console.debug(`Creating Folder: ${folderName} in S3 Bucket`);
 
 	const decodedFolderName = decodeURIComponent(folderName);
 	const folders = decodedFolderName.split('/');
@@ -251,12 +251,12 @@ const createFolder = async function (folderName) {
 		}
 	}
 
-	logger.debug("S3 Create Folder Request Completed");
+	console.debug("S3 Create Folder Request Completed");
 	return "Folder successfully created in S3 Bucket";
 };
 
 const deleteFolder = async function (folderName) {
-	logger.debug(`Deleting Folder: ${folderName} in S3 Bucket`);
+	console.debug(`Deleting Folder: ${folderName} in S3 Bucket`);
 
 	// chekc if folder exists and then check empty
 
@@ -295,13 +295,13 @@ const deleteFolder = async function (folderName) {
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		logger.debug("S3 Delete Folder Request Completed");
+		console.debug("S3 Delete Folder Request Completed");
 	}
 };
 
 const listFilesInFolder = async function (folderName) {
 
-	logger.debug(`Requesting File List from Folder: (${folderName}) in S3 Bucket`);
+	console.debug(`Requesting File List from Folder: (${folderName}) in S3 Bucket`);
 
 	const decodedFolderName = decodeURIComponent(folderName);
 	const addTrailingSlash = !decodedFolderName.endsWith('/') && decodedFolderName != '' ? decodedFolderName + '/' : decodedFolderName;

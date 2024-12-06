@@ -1,9 +1,4 @@
 /**
- * App Packages
- */
-const logger = require("../logger.js");
-
-/**
  * File Access Methods
  * - S3
  * - FTP

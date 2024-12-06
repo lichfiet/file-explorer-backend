@@ -1,8 +1,10 @@
 /**
  ** Observability
  */
-const observability = require("./utils/observability.js");
+const logger = require("./utils/logger.js");
+
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  const observability = require("./utils/observability.js");
   observability.sdk.start();
 
   process.on('SIGTERM', () => {
@@ -11,10 +13,10 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       .then(() => console.log('Tracing terminated'))
       .catch((error) => console.log('Error terminating tracing', error))
       .finally(() => process.exit(0))
-  })
+    })
+  observability.logger.info("Initializing logging");
 }
 
-observability.logger.info("Initializing logging");
 
 // load environment variables if local .env file exists
 const dotenv = require("dotenv"); // for use of environment variables
@@ -65,13 +67,11 @@ const app = express();
 
 
 const cors = require("cors"); // Cross Origin Resource Sharing
-const { validationMiddleware } = require("./middlewares/reqValidationMiddleware.js"); // Request Validation
 const multer = require("multer"); // File Uploads
 const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
 
 app.use(express.json());
 app.use(cors());
-app.use(validationMiddleware);
 
 
 
@@ -83,7 +83,6 @@ app.use(validationMiddleware);
  * *Import Utilities
  */
 const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
-const { validationController } = require("./middlewares/reqValidationMiddleware.js"); // For request validation
 const errorHandler = require("./middlewares/error.js"); // error handling
 console.info("Imported Utilities");
 const rabbit = require("./utils/rabbit.js");

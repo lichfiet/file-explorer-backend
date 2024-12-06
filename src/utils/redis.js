@@ -1,5 +1,5 @@
 const { createClient } = require("redis");
-const logger = require("./logger.js");
+const { logger } = require("./logger.js");
 
 // Config for Redis is stored in .env file, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 const redisClient = createClient({
@@ -32,7 +32,7 @@ const redisGetS3Url = async (key) => {
 const attemptConnection = async (retries = process.env.REDIS_RETRY_CONNECTION_ATTEMPTS, delay = process.env.REDIS_CONNECTION_RETRY_DELAY) => {
     return new Promise(async (resolve, reject) => {
         if (redisClient.isOpen) {
-            logger.debug("Redis Connection Already Open");
+            console.debug("Redis Connection Already Open");
             return resolve();
         }
 

@@ -57,6 +57,9 @@ services:
       - "8443:8443"
     volumes:
       - ../src/:/usr/app/src/
+      - ../package.json:/usr/app/package.json
+      - ../package-lock.json:/usr/app/package-lock.json
+      - ../node_modules/:/usr/app/node_modules/
     environment:
       APP_NAME: "file-explorer-backend"
       PORT: "8443"
@@ -67,6 +70,7 @@ services:
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       AWS_S3_BUCKET: "file-explorer-s3-bucket"
       REDIS_HOST: "redis"
+      OTEL_EXPORTER_OTLP_ENDPOINT: "meow"
 
 #   minio:
 #     image: minio/minio
