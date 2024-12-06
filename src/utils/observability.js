@@ -59,7 +59,9 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
 }
 
 const logger = pino({
-
+  transport: {
+    target: 'pino-pretty', // Optional: Makes logs human-readable in development
+  },
 })
 
 logger.info("test")
