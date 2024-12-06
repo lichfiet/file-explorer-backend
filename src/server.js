@@ -27,6 +27,7 @@ function logKeys() {
     k8sNamespace: process.env.K8S_NAMESPACE || '',
     k8sNodeName: process.env.K8S_NODE || '',
     k8sDeploymentName: process.env.K8S_POD_IP || '',
+    otelExporterEndpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || ''
   };
 
   for (let key in vars) {
@@ -307,17 +308,11 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
 app.get("/health", async (req, res) => {
   console.log("Checking Health");
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace('6379', '13133') + '/health').then((response) => {
-      if (!response.status) {
-        res.status(500).send("Error Connecting to OTLP Exporter");
-        console.error('Error Connecting to OTLP Exporter', err);        
-      }
-    }).catch((err) => {
-      if (!err.response.status) {
-        res.status(500).send("Error Connecting to OTLP Exporter");
-        console.error('Error Connecting to OTLP Exporter', err);
-      }
-    })
+    const response = axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace('6379', '13133') + '/health').then((response) => response);
+    if (!response.status) {
+      res.status(500).send("Error Connecting to OTLP Exporter");
+    }
+  }
 
   // Check Redis Connection
   console.log("Checking Redis");
