@@ -1,7 +1,6 @@
 /**
  ** Observability
  */
-const logger = require("./utils/logger.js");
 const { sdk } = require("./utils/observability.js");
 
 
