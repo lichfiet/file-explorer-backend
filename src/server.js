@@ -324,7 +324,7 @@ app.get("/health", async (req, res) => {
     try {
         axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health');
       } catch (err) {
-        throw new Error("Error Connecting to OTLP Exporter");
+        res.status(500).send("Error Connecting to OTLP Exporter");
       }
     }
     
@@ -332,8 +332,9 @@ app.get("/health", async (req, res) => {
       await rabbit.initialize();
       await redis.connect();
     } catch (err) {
-      throw new Error("Error Connecting to RabbitMQ or Redis");
+      res.status(500).send("Error Connecting to RabbitMQ or Redis");
     }
+
 
   res.status(200).send({
     status: "OK",

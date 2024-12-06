@@ -9,8 +9,6 @@ const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http');
 const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
 
-const { api } = require('@opentelemetry/api');
-
 // Trace Exporter Configuration
 const exporterOptions = {
   url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/v1/traces',
@@ -18,9 +16,11 @@ const exporterOptions = {
     'OT-Tracer-Span-Export': 'true',
   },
 };
+const traceExporter = new OTLPTraceExporter(exporterOptions)
+
+
 
 let otelUrl = "localhost:4317";
-
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   otelUrl = process.env.OTEL_EXPORTER_OTLP_ENDPOINT
 }
@@ -29,7 +29,6 @@ const logExporter = {
   url: otelUrl + '/v1/logs'
 };
 
-const traceExporter = new OTLPTraceExporter(exporterOptions)
 const sdk = new opentelemetry.NodeSDK({
   traceExporter,
   logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new OTLPLogExporter(logExporter))],
@@ -42,7 +41,7 @@ const sdk = new opentelemetry.NodeSDK({
   ],
   resource: new Resource({
     // highlight-next-line
-    [SemanticResourceAttributes.SERVICE_NAME]: 'node_app',
+    [SemanticResourceAttributes.SERVICE_NAME]: '',
   }),
 })
 
