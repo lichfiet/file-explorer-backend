@@ -2,6 +2,20 @@
  ** Observability
  */
 const logger = require("./utils/logger.js");
+const { sdk } = require("./utils/observability.js");
+
+
+if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  sdk.start();
+  
+  process.on('SIGTERM', () => {
+    sdk.shutdown()
+      .then(() => console.log('Tracing terminated'))
+      .catch((error) => console.log('Error terminating tracing', error))
+      .finally(() => process.exit(0))
+  })
+  console.info("Initializing logging");
+}
 
 
 // load environment variables if local .env file exists
