@@ -308,8 +308,8 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
 app.get("/health", async (req, res) => {
   console.log("Checking Health");
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    const response = axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace('6379', '13133') + '/health').then((response) => response);
-    if (!response.status) {
+    const response = axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/foo').then((response) => response);
+    if (response.status != 404) {
       res.status(500).send("Error Connecting to OTLP Exporter");
     }
   }
