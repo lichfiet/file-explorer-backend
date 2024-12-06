@@ -10,6 +10,20 @@ const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
 const pino = require('pino')
 
+if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
+  const observability = require("./utils/observability.js");
+  observability.sdk.start();
+
+  process.on('SIGTERM', () => {
+    observability.sdk
+      .shutdown()
+      .then(() => console.log('Tracing terminated'))
+      .catch((error) => console.log('Error terminating tracing', error))
+      .finally(() => process.exit(0))
+  })
+  console.info("Initializing logging");
+}
+
 
 
 

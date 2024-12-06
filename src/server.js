@@ -2,19 +2,9 @@
  ** Observability
  */
 const logger = require("./utils/logger.js");
-
+var observability
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  const observability = require("./utils/observability.js");
-  observability.sdk.start();
-
-  process.on('SIGTERM', () => {
-    observability.sdk
-      .shutdown()
-      .then(() => console.log('Tracing terminated'))
-      .catch((error) => console.log('Error terminating tracing', error))
-      .finally(() => process.exit(0))
-  })
-  console.info("Initializing logging");
+  observability = require("./utils/observability.js");
 }
 
 
@@ -319,8 +309,7 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
  * * /health for healthchecks in the future
  */
 app.get("/health", async (req, res) => {
-
-
+  console.log("Checking Health");
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
     axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health').then((response) => {
       if (!response.status) {
@@ -330,15 +319,16 @@ app.get("/health", async (req, res) => {
   }
 
   // Check Redis Connection
+  console.log("Checking Redis");
   await redis.ping().catch((err) => {
-    res.status(500).send("Error Connecting to RabbitMQ");
+    res.status(500).send("Error Connecting to Redis");
   });
 
   // Check RabbitMQ Connection
+  console.log("Checking RabbitMQ");
   await rabbit.ping().catch((err) => {
     res.status(500).send("Error Connecting to RabbitMQ");
   });
-
 
 
   res.status(200).send({
@@ -346,18 +336,10 @@ app.get("/health", async (req, res) => {
     message: "Server Running",
     redis: "Healthy",
     rabbit: "Healthy"
-    ?process.env.OTEL_EXPORTER_OTLP_ENDPOINT: "Healthy"
+      ? process.env.OTEL_EXPORTER_OTLP_ENDPOINT : "Healthy"
   })
 
 });
-
-
-app.get("/test", async (req, res, next) => {
-  const rabbit = require("./utils/rabbit.js");
-  await rabbit.initialize();
-  res.status(200).send("Test");
-});
-
 
 redis.connect();
 rabbit.initialize();

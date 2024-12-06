@@ -51,7 +51,12 @@ const attemptConnection = async (retries = process.env.REDIS_RETRY_CONNECTION_AT
     });
   };
 
+const redisPing = async () => {
+    return redisClient.ping();
+};
+
 module.exports = redis = {
     connect: attemptConnection,
-    redisGetS3Url: redisGetS3Url
+    redisGetS3Url: redisGetS3Url,
+    ping: redisPing
 };

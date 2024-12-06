@@ -60,7 +60,7 @@ COPY ./ /usr/app/
 # run the app
 EXPOSE 8443/tcp
 RUN printenv
-CMD ['npm', 'run', 'dev']
+CMD npm run dev
 
 ##
 ## Staging Build

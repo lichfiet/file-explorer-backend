@@ -67,7 +67,6 @@ module.exports = rabbit = {
     ping: async () => {
         console.debug('Pinging RabbitMQ');
         await channel.checkQueue('generateThumbnail');
-        await channel.checkQueue('deleteThumbnail');
         console.debug('RabbitMQ Ping Successful');
     }
 }
