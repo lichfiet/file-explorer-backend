@@ -284,7 +284,7 @@ const deleteFolder = async function (folderName) {
 
 		await deleteRecursive(addTrailingSlash);
 
-		const checkFilesExist = await s3Client.send(new ListObjectsCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: file.Key }));
+		const checkFilesExist = await s3Client.send(new ListObjectsCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: folderName }));
 		const filesAfterDelete = checkFilesExist.Contents || [];
 
 		if (filesAfterDelete.length === 0) {

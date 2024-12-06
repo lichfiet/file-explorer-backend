@@ -14,7 +14,7 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       .catch((error) => console.log('Error terminating tracing', error))
       .finally(() => process.exit(0))
     })
-  observability.logger.info("Initializing logging");
+  console.info("Initializing logging");
 }
 
 
