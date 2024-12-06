@@ -2,9 +2,8 @@
  ** Observability
  */
 const logger = require("./utils/logger.js");
-var observability
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  observability = require("./utils/observability.js");
+  const observability = require("./utils/observability.js");
 }
 
 
@@ -314,9 +313,14 @@ app.get("/health", async (req, res) => {
     axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT.replace('6379', '13133') + '/health').then((response) => {
       if (!response.status) {
         res.status(500).send("Error Connecting to OTLP Exporter");
+        console.error('Error Connecting to OTLP Exporter', err);        
       }
-    });
-  }
+    }).catch((err) => {
+      if (!err.response.status) {
+        res.status(500).send("Error Connecting to OTLP Exporter");
+        console.error('Error Connecting to OTLP Exporter', err);
+      }
+    })ß
 
   // Check Redis Connection
   console.log("Checking Redis");
