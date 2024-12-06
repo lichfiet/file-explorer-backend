@@ -1,12 +1,10 @@
 const { createClient } = require("redis");
-const logger = require("./logger.js");
 
 // Config for Redis is stored in .env file, REDIS_HOST, REDIS_PORT, REDIS_PASSWORD
 const redisClient = createClient({
     url: 'redis://' + process.env.REDIS_HOST,
     port: process.env.REDIS_PORT,
-    password: process.env.REDIS_PASSWORD,
-    log: logger,
+    password: process.env.REDIS_PASSWORD
 });
 
 const rabbit = require("./rabbit.js");
