@@ -35,10 +35,6 @@ RUN apk add gcc g++ python3 make
 
 ## NODE MODULES
 
-# Install Dev Node Modules
-RUN mkdir -p /var/dev
-COPY package.json package-lock.json /var/dev/
-RUN cd /var/dev && npm install --development
 # Install Prod Node Modules
 RUN mkdir -p /var/prod
 COPY package.json package-lock.json /var/prod/
@@ -49,7 +45,16 @@ RUN cd /var/prod && npm install --production
 ## - copy dev dependencies and source code into final image
 ##
 FROM base AS dev
-COPY --from=install /var/dev/node_modules node_modules
+
+# Install make and python3 for node-gyp dependency
+RUN apk update
+RUN apk add gcc g++ python3 make 
+
+# Install Dev Node Modules
+RUN cd /usr/app
+COPY package.json package-lock.json ./
+RUN npm install --development
+
 COPY ./ /usr/app/
 
 # run the app

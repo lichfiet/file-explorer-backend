@@ -8,11 +8,11 @@ const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http')
 const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http');
 const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
-const pino = require('pino')
+// const pino = require('pino')
 
-let logger = new pino()
+// let logger = new pino()
 
-logger.info("test")
+// logger.info("test")
 
 
 
