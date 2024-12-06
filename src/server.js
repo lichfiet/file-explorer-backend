@@ -319,21 +319,38 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
  * * /health for healthchecks in the future
  */
 app.get("/health", async (req, res) => {
+
+
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    try {
-        axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health');
-      } catch (err) {
+    axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health').then((response) => {
+      if (!response.status) {
         res.status(500).send("Error Connecting to OTLP Exporter");
       }
-    }
+    });
+  }
+
+  // Check Redis Connection
+  await redis.ping().catch((err) => {
+    res.status(500).send("Error Connecting to RabbitMQ");
+  });
+
+  // Check RabbitMQ Connection
+  await rabbit.ping().catch((err) => {
+    res.status(500).send("Error Connecting to RabbitMQ");
+  });
+
+
 
   res.status(200).send({
     status: "OK",
-    message: "Server Running"
+    message: "Server Running",
+    redis: "Healthy",
+    rabbit: "Healthy"
+    ?process.env.OTEL_EXPORTER_OTLP_ENDPOINT: "Healthy"
   })
 
 });
-  
+
 
 app.get("/test", async (req, res, next) => {
   const rabbit = require("./utils/rabbit.js");

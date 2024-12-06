@@ -63,5 +63,11 @@ module.exports = rabbit = {
     connect: attemptConnection,
     initialize: initialize,
     sendGenerateThumbnailMessage: sendGenerateThumbnailMessage,
-    sendDeleteThumbnailMessage: sendDeleteThumbnailMessage
+    sendDeleteThumbnailMessage: sendDeleteThumbnailMessage,
+    ping: async () => {
+        console.debug('Pinging RabbitMQ');
+        await channel.checkQueue('generateThumbnail');
+        await channel.checkQueue('deleteThumbnail');
+        console.debug('RabbitMQ Ping Successful');
+    }
 }

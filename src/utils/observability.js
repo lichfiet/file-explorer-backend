@@ -8,11 +8,7 @@ const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http')
 const { OTLPLogExporter } = require('@opentelemetry/exporter-logs-otlp-http');
 const { Resource } = require('@opentelemetry/resources');
 const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
-// const pino = require('pino')
-
-// let logger = new pino()
-
-// logger.info("test")
+const pino = require('pino')
 
 
 
@@ -51,5 +47,9 @@ const sdk = new opentelemetry.NodeSDK({
     [SemanticResourceAttributes.SERVICE_NAME]: '',
   }),
 })
+
+let logger = pino()
+
+logger.info("test")
 
 module.exports = { sdk };
