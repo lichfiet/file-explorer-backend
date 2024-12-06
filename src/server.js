@@ -2,9 +2,6 @@
  ** Observability
  */
 const logger = require("./utils/logger.js");
-if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  const observability = require("./utils/observability.js");
-}
 
 
 // load environment variables if local .env file exists
