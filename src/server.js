@@ -3,7 +3,7 @@
  */
  const observability = require("./utils/observability.js");
  if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-   observability.sdk.start();
+  observability.sdk.start();
  
    process.on('SIGTERM', () => {
      observability.sdk
