@@ -2,10 +2,13 @@
  ** Observability
  */
  const observability = require("./utils/observability.js");
+ 
  if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   observability.sdk.start();
+  observability.logger.info("Starting tracing");
  
    process.on('SIGTERM', () => {
+     observability.logger.info("Shutting down tracing");
      observability.sdk
        .shutdown()
        .then(() => console.log('Tracing terminated'))
