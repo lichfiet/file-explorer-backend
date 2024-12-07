@@ -71,4 +71,6 @@ console.debug = function(message) {
   logger.debug(message);
 };
 
+console.log(process.env.OTEL_EXPORTER_OTLP_ENDPOINT);
+
 module.exports = { sdk, logger };
