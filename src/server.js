@@ -1,7 +1,7 @@
 /**
  ** Observability
  */
-const { sdk } = require("./utils/observability.js");
+const { sdk, logger } = require("./utils/observability.js");
 
 
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
@@ -13,7 +13,7 @@ if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
       .catch((error) => console.log('Error terminating tracing', error))
       .finally(() => process.exit(0))
   })
-  console.info("Initializing logging");
+  logger.info("Initializing logging");
 }
 
 
