@@ -3,6 +3,21 @@
  */
 const { sdk, logger } = require("./utils/observability.js");
 
+console.error = function(message) {
+  logger.error(message);
+};
+
+console.warn = function(message) {
+  logger.warn(message);
+};
+
+console.log = function(message) {
+  logger.info(message);
+};
+
+console.debug = function(message) {
+  logger.debug(message);
+};
 
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
   sdk.start();

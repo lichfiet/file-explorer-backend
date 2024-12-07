@@ -34,7 +34,7 @@ const sdk = new opentelemetry.NodeSDK({
   instrumentations: [
     getNodeAutoInstrumentations(),
     new PinoInstrumentation({
-      logLevel: process.env.LOG_LEVEL || 'info',
+      logLevel: process.env.LOG_LEVEL || 'debug',
       ignoreUrls: [
         /localhost/,
         /127.0.0.1/,
