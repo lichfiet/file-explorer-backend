@@ -49,20 +49,20 @@ const logger = pino({
   }
 });
 
-// console.error = function(message) {
-//   logger.error(message);
-// };
+console.error = function(message) {
+  logger.error(message);
+};
 
-// console.warn = function(message) {
-//   logger.warn(message);
-// };
+console.warn = function(message) {
+  logger.warn(message);
+};
 
-// console.log = function(message) {
-//   logger.info(message);
-// };
+console.log = function(message) {
+  logger.info(message);
+};
 
-// console.debug = function(message) {
-//   logger.debug(message);
-// };
+console.debug = function(message) {
+  logger.debug(message);
+};
 
 module.exports = { sdk, logger };
