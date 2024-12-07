@@ -65,13 +65,11 @@
  
  
  const cors = require("cors"); // Cross Origin Resource Sharing
- const { validationMiddleware } = require("./middlewares/reqValidationMiddleware.js"); // Request Validation
  const multer = require("multer"); // File Uploads
  const upload = multer({ dest: "../uploads" }); // Set up multer for handling file uploads
  
  app.use(express.json());
  app.use(cors());
- app.use(validationMiddleware);
  
  
  
