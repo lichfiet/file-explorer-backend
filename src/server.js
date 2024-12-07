@@ -81,7 +81,6 @@
   * *Import Utilities
   */
  const { fileAccessMethodController } = require("./utils/fileAccess/fileAccessMethodController.js"); // For s3 / sftp connections
- const { validationController } = require("./middlewares/reqValidationMiddleware.js"); // For request validation
  const errorHandler = require("./middlewares/error.js"); // error handling
  console.info("Imported Utilities");
  const rabbit = require("./utils/rabbit.js");
