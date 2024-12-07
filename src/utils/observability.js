@@ -33,7 +33,13 @@ const sdk = new opentelemetry.NodeSDK({
   logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new OTLPLogExporter(logExporter))],
   instrumentations: [
     getNodeAutoInstrumentations(),
-    new PinoInstrumentation(),
+    new PinoInstrumentation({
+      logLevel: process.env.LOG_LEVEL || 'info',
+      ignoreUrls: [
+        /localhost/,
+        /127.0.0.1/,
+      ],
+    }),
   ],
   resource: new Resource({
     // highlight-next-line
