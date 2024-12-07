@@ -336,7 +336,14 @@ app.delete("/deleteFolder/:folderName", async (req, res) => {
 app.get("/health", async (req, res) => {
   console.log("Checking Health");
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-   console.log("otel")
+   axios.get(process.env.OTEL_EXPORTER_OTLP_ENDPOINT + '/health').then((response) => {
+    console.log(response.data);
+    res.status(200).send(response.data);
+   }).catch((err, res) => {
+    if (err.response.status === 500) {
+      res.status(500).send(err.response.data);
+    }
+   });
   }
 
   // Check Redis Connection
