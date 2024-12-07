@@ -33,13 +33,7 @@ const sdk = new opentelemetry.NodeSDK({
   logRecordProcessors: [new opentelemetry.logs.SimpleLogRecordProcessor(new OTLPLogExporter(logExporter))],
   instrumentations: [
     getNodeAutoInstrumentations(),
-    new PinoInstrumentation({
-      logLevel: process.env.LOG_LEVEL || 'debug',
-      ignoreUrls: [
-        /localhost/,
-        /127.0.0.1/,
-      ],
-    }),
+    new PinoInstrumentation(),
   ],
   resource: new Resource({
     // highlight-next-line
@@ -70,7 +64,5 @@ console.log = function(message) {
 console.debug = function(message) {
   logger.debug(message);
 };
-
-console.log(process.env.OTEL_EXPORTER_OTLP_ENDPOINT);
 
 module.exports = { sdk, logger };
