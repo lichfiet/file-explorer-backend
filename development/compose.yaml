@@ -69,7 +69,6 @@ services:
       AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
       AWS_S3_BUCKET: "file-explorer-s3-bucket"
       REDIS_HOST: "redis"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://localhost:4317"
 
 #   minio:
 #     image: minio/minio

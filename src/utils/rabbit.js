@@ -52,11 +52,14 @@ const sendGenerateThumbnailMessage = (bucketName, key) => {
     })
 };
 
-
-
-const sendDeleteThumbnailMessage = (bucketName, key) => {
+const sendDeleteThumbnailMessage = async (bucketName, key) => {
     console.debug(`Sending Delete Thumbnail Message for Bucket: ${bucketName} and Key: ${key}`);
-    channel.sendToQueue('deleteThumbnail', Buffer.from(JSON.stringify({bucketName: bucketName, key: key })))
+    await channel.sendToQueue('deleteThumbnail', Buffer.from(JSON.stringify({bucketName: bucketName, key: key })), (error) => {
+        if (error) {
+            console.error('Error publishing Delete Thumbnail Message: ', error);
+            throw error;
+        }
+    })
 };
 
 module.exports = rabbit = {

@@ -92,45 +92,39 @@ const getFile = async (key) => {
 };
 
 
-const deleteFile = async (fileName) => {
+const deleteFile = async (bucketName, fileName) => {
 	console.debug(`Deleting file: ${fileName} from S3 Bucket`);
 
 	try {
-		const fileExistsReqParams = { Bucket: process.env.AWS_S3_BUCKET, Key: fileName, ObjectAttributes: ["ObjectSize"] };
-		const fileExists = await s3Client.send(new GetObjectAttributesCommand(fileExistsReqParams)).then(
-			(response) => { return (response.$metadata.httpStatusCode === 200 ? true : false) } // checks s3 object exists
-		);
+		const deleteFilesRecursive = async (prefix) => {
+			const deleteFile = async (fileKey) => await s3Client.send(new DeleteObjectCommand({ Bucket: bucketName, Key: fileKey })); // deletes a single file from s3
+			const fileList = await s3Client.send(new ListObjectsCommand({ Bucket: bucketName, Prefix: prefix })); // this will either return the file, or a list of files if it's a folder
 
-		console.debug(`File Exists: ${await fileExists}`);
-
-		const deleteFile = async (fileKey) => {
-			await s3Client.send(new DeleteObjectCommand({ Bucket: process.env.AWS_S3_BUCKET, Key: fileKey }));
-		};
-
-		const listFilesRecursive = async (prefix) => {
-			const response = await s3Client.send(new ListObjectsCommand({ Bucket: process.env.AWS_S3_BUCKET, Prefix: prefix }));
-			
 			// Delete all file objects
-			const files = response.Contents || [];
-			for (const file of files) {
-				await deleteFile(file.Key);
+			const deleteFilesInFilelist = async (fileList) => {
+				const files = fileList.Contents || [];
+				for (const file of files) {
+					await deleteFile(file.Key);
+				}
 			}
 
-			// Find subfolders and delete them recursively
-			const prefixes = response.CommonPrefixes || [];
-			for (const prefix of prefixes) {
-				await listFilesRecursive(prefix.Prefix);
+			// if a folder, and it has child folders, perform the same function on them
+			const deleteChildFolders = async (fileList) => {
+				const prefixes = fileList.CommonPrefixes || [];
+				for (const prefix of prefixes) {
+					await deleteFilesRecursive(prefix.Prefix);
+				}
 			}
+
+			await deleteFilesInFilelist(fileList);
+			await deleteChildFolders(fileList);
 		};
 
-		await listFilesRecursive(fileName);
-
-		return { status: 200, message: "File(s) successfully deleted from S3 Bucket" };
-
+		await deleteFilesRecursive(fileName);
 	} catch (err) {
 		return handleErrors(err);
 	} finally {
-		console.debug(`S3 Delete for Filename: ${fileName} Completed`);
+		console.debug(`S3 Delete for File Prefix: ${fileName} Completed`);
 	}
 };
 
@@ -164,13 +158,8 @@ const createFolderInS3 = async function (key) {
 		if (folder) {
 			currentPath += folder + '/';
 			try {
-				const requestInfo = {
-					Bucket: process.env.AWS_S3_BUCKET,
-					Key: currentPath,
-					Body: ""
-				};
-
-				const response = await s3Client.send(new PutObjectCommand(requestInfo));
+				const response = await s3Client.send(new PutObjectCommand({Bucket: process.env.AWS_S3_BUCKET, Key: currentPath}));
+				console.error(currentPath);
 				if (response.$metadata.httpStatusCode !== 200) {
 					throw new Error("Error creating folder in S3 Bucket");
 				}
@@ -235,13 +224,7 @@ const createFolder = async function (folderName) {
 		if (folder) {
 			currentPath += folder + '/';
 			try {
-				const requestInfo = {
-					Bucket: process.env.AWS_S3_BUCKET,
-					Key: currentPath,
-					Body: ""
-				};
-
-				const response = await s3Client.send(new PutObjectCommand(requestInfo));
+				const response = await s3Client.send(new PutObjectCommand({Bucket: process.env.AWS_S3_BUCKET, Key: currentPath}));
 				if (response.$metadata.httpStatusCode !== 200) {
 					throw new Error("Error creating folder in S3 Bucket");
 				}
@@ -393,14 +376,35 @@ const listFilesInFolder = async function (folderName) {
 	}
 };
 
+const checkBucketExists = async (bucketName) => {
+	console.debug(`Checking if Bucket: ${bucketName} exists`);
+	const reqParams = { Bucket: bucketName };
+	const response = await s3Client.send(new HeadBucketCommand(reqParams));
+	return response.$metadata.httpStatusCode === 200;
+};
+
+const checkFilesExists = async (bucketName, fileName) => {
+	console.debug(`Checking if File: ${fileName} exists in Bucket: ${bucketName}`);
+	
+	try {
+		const response = await s3Client.send(new GetObjectAttributesCommand({ Bucket: bucketName, Key: fileName, ObjectAttributes: ["ObjectSize"] }));
+		return response.$metadata.httpStatusCode === 200;
+	} catch (err) {
+		console.error('Error checking if file exists: ', err.Code);
+		return false;
+	}
+};
+
 module.exports = {
 	s3: {
 		getFile,
 		uploadFile,
-		deleteFile,
 		modifyFile,
 		createFolder,
 		deleteFolder,
 		listFilesInFolder,
 	},
+	checkBucketExists,
+	checkFilesExists,
+	deleteFile,
 };

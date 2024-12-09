@@ -37,32 +37,10 @@ const sdk = new opentelemetry.NodeSDK({
   ],
   resource: new Resource({
     // highlight-next-line
-    [SemanticResourceAttributes.SERVICE_NAME]: 'node_app',
+    [SemanticResourceAttributes.SERVICE_NAME]: 'file-explorer-backend',
   }),
 })
 
-const pino = require('pino');
-const logger = pino({
-  level: process.env.LOG_LEVEL ? process.env.LOG_LEVEL.toLowerCase() : 'info',
-  transport: {
-    target: 'pino-pretty'
-  }
-});
 
-console.error = function(message) {
-  logger.error(message);
-};
-
-console.warn = function(message) {
-  logger.warn(message);
-};
-
-console.log = function(message) {
-  logger.info(message);
-};
-
-console.debug = function(message) {
-  logger.debug(message);
-};
 
 module.exports = { sdk, logger };
